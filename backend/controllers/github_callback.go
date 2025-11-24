@@ -27,27 +27,13 @@ func (d DiggerController) GithubAppCallbackPage(c *gin.Context) {
 	}
 	//setupAction := c.Request.URL.Query()["setup_action"][0]
 	codeParams, codeExists := c.Request.URL.Query()["code"]
-	if !codeExists || len(codeParams) == 0 {
-		slog.Error("There was no code in the url query parameters")
-		c.String(http.StatusBadRequest, "could not find the code query parameter for github app")
-		return
-	}
-	code := codeParams[0]
-	if len(code) < 1 {
-		slog.Error("Code parameter is empty")
-		c.String(http.StatusBadRequest, "code parameter for github app is empty")
-		return
+	code := ""
+	if codeExists && len(codeParams) > 0 && len(codeParams[0]) > 0 {
+		code = codeParams[0]
 	}
 	appId := c.Request.URL.Query().Get("state")
 
-	slog.Info("Processing GitHub app callback", "installationId", installationId, "appId", appId)
-
-	clientId, clientSecret, _, _, err := d.GithubClientProvider.FetchCredentials(appId)
-	if err != nil {
-		slog.Error("Could not fetch credentials for GitHub app", "appId", appId, "error", err)
-		c.String(http.StatusInternalServerError, "could not find credentials for github app")
-		return
-	}
+	slog.Info("Processing GitHub app callback", "installationId", installationId, "appId", appId, "hasCode", code != "")
 
 	installationId64, err := strconv.ParseInt(installationId, 10, 64)
 	if err != nil {
@@ -59,30 +45,42 @@ func (d DiggerController) GithubAppCallbackPage(c *gin.Context) {
 		return
 	}
 
-	slog.Debug("Validating GitHub callback", "installationId", installationId64, "clientId", clientId)
+	// vcsOwner is used for analytics; we'll populate it if we can validate via OAuth
+	var vcsOwner string
 
-	result, installation, err := validateGithubCallback(d.GithubClientProvider, clientId, clientSecret, code, installationId64)
-	if !result {
-		slog.Error("Failed to validate installation ID",
+	// If we have a code parameter, validate the callback via OAuth
+	// This provides additional security by confirming the user authorized the installation
+	if code != "" {
+		clientId, clientSecret, _, _, err := d.GithubClientProvider.FetchCredentials(appId)
+		if err != nil {
+			slog.Error("Could not fetch credentials for GitHub app", "appId", appId, "error", err)
+			c.String(http.StatusInternalServerError, "could not find credentials for github app")
+			return
+		}
+
+		slog.Debug("Validating GitHub callback", "installationId", installationId64, "clientId", clientId)
+
+		result, installation, err := validateGithubCallback(d.GithubClientProvider, clientId, clientSecret, code, installationId64)
+		if !result {
+			slog.Error("Failed to validate installation ID",
+				"installationId", installationId64,
+				"error", err,
+			)
+			c.String(http.StatusInternalServerError, "Failed to validate installation_id.")
+			return
+		}
+
+		if installation != nil && installation.Account != nil && installation.Account.Login != nil {
+			vcsOwner = *installation.Account.Login
+		}
+	} else {
+		slog.Info("No code parameter provided, skipping OAuth validation (repos will sync via webhook)",
 			"installationId", installationId64,
-			"error", err,
 		)
-		c.String(http.StatusInternalServerError, "Failed to validate installation_id.")
-		return
 	}
 
-	// TODO: Lookup org in GithubAppInstallation by installationID if found use that installationID otherwise
-	// create a new org for this installationID
-	// retrieve org for current orgID
-	installationIdInt64, err := strconv.ParseInt(installationId, 10, 64)
-	if err != nil {
-		slog.Error("Failed to parse installation ID as int64",
-			"installationId", installationId,
-			"error", err,
-		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "installationId could not be parsed"})
-		return
-	}
+	// Lookup or create org for this installation
+	installationIdInt64 := installationId64
 
 	slog.Debug("Looking up GitHub app installation link", "installationId", installationIdInt64)
 
@@ -150,11 +148,7 @@ func (d DiggerController) GithubAppCallbackPage(c *gin.Context) {
 	org := link.Organisation
 	orgId := link.OrganisationId
 
-	var vcsOwner string = ""
-	if installation.Account.Login != nil {
-		vcsOwner = *installation.Account.Login
-	}
-	// we have multiple repos here, we don't really want to send an track event for each repo, so we just send the vcs owner
+	// vcsOwner was populated earlier if we had a code parameter for OAuth validation
 	segment.Track(*org, vcsOwner, "", "github", "vcs_repo_installed", map[string]string{})
 
 	// create a github installation link (org ID matched to installation ID)
