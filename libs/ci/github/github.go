@@ -333,7 +333,55 @@ func (svc GithubService) CreateCheckRun(name string, status string, conclusion s
 	}
 
 	ctx := context.Background()
-	checkRun, _, err := client.Checks.CreateCheckRun(ctx, owner, repoName, opts)
+	checkRun, resp, err := client.Checks.CreateCheckRun(ctx, owner, repoName, opts)
+	
+	// Log rate limit information
+	if resp != nil {
+		limit := resp.Header.Get("X-RateLimit-Limit")
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		reset := resp.Header.Get("X-RateLimit-Reset")
+		
+		if limit != "" && remaining != "" {
+			limitInt, _ := strconv.Atoi(limit)
+			remainingInt, _ := strconv.Atoi(remaining)
+			
+			// Calculate percentage remaining
+			var percentRemaining float64
+			if limitInt > 0 {
+				percentRemaining = (float64(remainingInt) / float64(limitInt)) * 100
+			}
+			
+			// Log based on severity
+			if remainingInt == 0 {
+				slog.Error("GitHub API rate limit EXHAUSTED",
+					"operation", "CreateCheckRun",
+					"name", name,
+					"limit", limit,
+					"remaining", remaining,
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else if percentRemaining < 20 {
+				slog.Warn("GitHub API rate limit getting LOW",
+					"operation", "CreateCheckRun",
+					"name", name,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining),
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else {
+				slog.Debug("GitHub API rate limit status",
+					"operation", "CreateCheckRun",
+					"name", name,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining))
+			}
+		}
+	}
+	
 	return checkRun, err
 }
 
@@ -442,7 +490,55 @@ func (svc GithubService) UpdateCheckRun(checkRunId string, options GithubCheckRu
 		opts.Conclusion = github.String(*conclusion)
 	}
 
-	checkRun, _, err := client.Checks.UpdateCheckRun(ctx, owner, repoName, checkRunIdInt64, opts)
+	checkRun, resp, err := client.Checks.UpdateCheckRun(ctx, owner, repoName, checkRunIdInt64, opts)
+	
+	// Log rate limit information
+	if resp != nil {
+		limit := resp.Header.Get("X-RateLimit-Limit")
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		reset := resp.Header.Get("X-RateLimit-Reset")
+		
+		if limit != "" && remaining != "" {
+			limitInt, _ := strconv.Atoi(limit)
+			remainingInt, _ := strconv.Atoi(remaining)
+			
+			// Calculate percentage remaining
+			var percentRemaining float64
+			if limitInt > 0 {
+				percentRemaining = (float64(remainingInt) / float64(limitInt)) * 100
+			}
+			
+			// Log based on severity
+			if remainingInt == 0 {
+				slog.Error("GitHub API rate limit EXHAUSTED",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else if percentRemaining < 20 {
+				slog.Warn("GitHub API rate limit getting LOW",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining),
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else {
+				slog.Debug("GitHub API rate limit status",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining))
+			}
+		}
+	}
+	
 	if err != nil {
 		slog.Error("Failed to update check run",
 			"inputCheckRunId", checkRunId,
