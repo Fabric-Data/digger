@@ -280,6 +280,13 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		return fmt.Errorf("could not get conclusion for job: %v", err)
 	}
 
+	// Only pass conclusion to GitHub API when job is completed (non-empty conclusion).
+	// GitHub rejects empty string as conclusion - it must be omitted for in-progress jobs.
+	var conclusionPtr *string
+	if conclusion != "" {
+		conclusionPtr = &conclusion
+	}
+
 	text := "" +
 		"```terraform\n" +
 		job.TerraformOutput +
@@ -296,7 +303,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		title := fmt.Sprintf("%v to create %v to update %v to delete", job.DiggerJobSummary.ResourcesCreated, job.DiggerJobSummary.ResourcesUpdated, job.DiggerJobSummary.ResourcesDeleted)
 		opts := github.GithubCheckRunUpdateOptions{
 			Status:     &status,
-			Conclusion: &conclusion,
+			Conclusion: conclusionPtr,
 			Title:      &title,
 			Summary:    &summary,
 			Text:       &text,
@@ -310,7 +317,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		title := fmt.Sprintf("%v created %v updated %v deleted", job.DiggerJobSummary.ResourcesCreated, job.DiggerJobSummary.ResourcesUpdated, job.DiggerJobSummary.ResourcesDeleted)
 		opts := github.GithubCheckRunUpdateOptions{
 			Status:     &status,
-			Conclusion: &conclusion,
+			Conclusion: conclusionPtr,
 			Title:      &title,
 			Summary:    &summary,
 			Text:       &text,
