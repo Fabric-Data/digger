@@ -6,7 +6,7 @@ terraform {
     hostname = "otaco.app"
     organization = "org_01K8RTMAHF3QTTX62SSE0757AM"    
     workspaces {
-      name = "028448c3-cefd-42c2-872c-f8ce055b5554"
+      name = "benchmark-05-1k-nulls-dependencies"
     }
   }
 }
@@ -19,15 +19,15 @@ resource "null_resource" "base" {
 }
 
 # Create 1000 resources, each depending on the previous one (chain)
+# Note: Dependencies are established implicitly through the triggers reference
 resource "null_resource" "chain" {
   count = 1000
 
   triggers = {
     index    = count.index
+    # This reference creates an implicit dependency chain
     previous = count.index == 0 ? null_resource.base.id : null_resource.chain[count.index - 1].id
   }
-
-  depends_on = count.index == 0 ? [null_resource.base] : [null_resource.chain[count.index - 1]]
 }
 
 # Additional layer: create resources that depend on every 10th chain resource

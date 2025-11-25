@@ -57,7 +57,9 @@ This directory contains Terraform configurations for benchmarking OpenTaco cloud
 
 ## Running Benchmarks
 
-Each benchmark is in its own directory. To run:
+### Manual Execution
+
+Each benchmark is in its own directory. To run manually:
 
 ```bash
 cd <benchmark-directory>
@@ -66,30 +68,110 @@ terraform plan
 terraform apply
 ```
 
-### Timing a Benchmark
+### Automated Execution
+
+Use the automation scripts to run all benchmarks and collect metrics:
 
 ```bash
-time terraform plan
-time terraform apply
+# Run all benchmarks (init + plan only, no apply)
+./run-benchmarks.sh
+
+# Run specific benchmarks (by number)
+./run-benchmarks.sh -b "01,03,05"
+
+# Run with apply (WARNING: creates real resources!)
+./run-benchmarks.sh --apply
+
+# Run plan only, skip init
+./run-benchmarks.sh --no-init
 ```
 
-For more detailed timing:
+#### Options
+
+- `-b, --benchmarks LIST` - Comma-separated list of benchmarks (e.g., "01,03,05")
+- `--no-init` - Skip terraform init
+- `--no-plan` - Skip terraform plan
+- `--apply` - Run terraform apply (default: off)
+- `--no-cleanup` - Don't clean up .terraform directories
+- `-o, --output DIR` - Output directory for results (default: ./results)
+
+### Viewing Results
+
+Results are automatically saved in JSON and CSV formats with timestamps.
 
 ```bash
-TF_LOG=DEBUG terraform plan 2>&1 | grep -i "duration"
+# View most recent results in table format
+./format-results.sh
+
+# View specific results file
+./format-results.sh results/benchmark-results-20231124-120000.json
 ```
+
+Sample output:
+```
+Benchmark                      Init (s)     Plan (s)     Apply (s)    Total (s)   
+----------                     --------     --------     ---------    ---------   
+01-simple-null                 2.34         0.45         skipped      2.79        
+02-10k-nulls                   3.12         15.23        skipped      18.35       
+03-ec2-midsize                 4.56         2.11         skipped      6.67        
+```
+
+### Comparing Results
+
+Compare two benchmark runs to see performance changes:
+
+```bash
+# Compare two most recent runs
+./compare-results.sh
+
+# Compare specific files
+./compare-results.sh results/benchmark-results-20231124-120000.json results/benchmark-results-20231124-130000.json
+```
+
+Sample output:
+```
+Benchmark                      Baseline (s)    Current (s)     Diff (s)        Change %  
+01-simple-null                 2.79            2.65            ↓ -0.14         -5.0%     
+02-10k-nulls                   18.35           17.89           ↓ -0.46         -2.5%     
+03-ec2-midsize                 6.67            6.82            ↑ +0.15         +2.2%     
+```
+
+### Results Structure
+
+Results are saved in the `./results` directory:
+
+- **JSON format**: Full detailed results with timestamps
+  ```json
+  [
+    {
+      "benchmark": "01-simple-null",
+      "timestamp": "2023-11-24T12:00:00Z",
+      "stages": {
+        "init": { "duration_seconds": 2.34, "status": "success" },
+        "plan": { "duration_seconds": 0.45, "status": "success" },
+        "apply": { "duration_seconds": 0, "status": "skipped" }
+      }
+    }
+  ]
+  ```
+
+- **CSV format**: Easy to import into spreadsheets
+  ```csv
+  benchmark,stage,duration_seconds,status,timestamp
+  01-simple-null,init,2.34,success,2023-11-24T12:00:00Z
+  01-simple-null,plan,0.45,success,2023-11-24T12:00:00Z
+  ```
 
 ## Next Steps
 
-1. **Automation**: Create scripts to automate timing collection
-2. **Comparison**: Run benchmarks against competitors (Terraform Cloud, Spacelift, etc.)
-3. **Metrics**: Collect and analyze:
-   - Plan time
-   - Apply time
+1. **Competitor Comparison**: Run benchmarks against Terraform Cloud, Spacelift, etc.
+2. **Advanced Metrics**: Collect additional metrics:
    - Network transfer time
    - State file size
    - Log volume
    - Resource count vs. execution time correlation
+3. **CI Integration**: Add benchmark runs to CI pipeline
+4. **Performance Tracking**: Track performance over time, create dashboards
 
 ## Notes
 

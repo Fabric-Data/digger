@@ -6,7 +6,7 @@ terraform {
     hostname = "otaco.app"
     organization = "org_01K8RTMAHF3QTTX62SSE0757AM"    
     workspaces {
-      name = "028448c3-cefd-42c2-872c-f8ce055b5554"
+      name = "benchmark-06-many-child-modules"
     }
   }
 }
