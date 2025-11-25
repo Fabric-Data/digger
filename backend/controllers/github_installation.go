@@ -2,12 +2,15 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/diggerhq/digger/backend/models"
 	"github.com/diggerhq/digger/backend/utils"
 	"github.com/google/go-github/v61/github"
+	"github.com/sethvargo/go-retry"
 )
 
 func getAccountDetails(account *github.User) (string, int64) {
@@ -167,15 +170,23 @@ func handleInstallationUpsertEvent(ctx context.Context, gh utils.GithubClientPro
 
 	accountLogin, accountId := getAccountDetails(installation.Installation.Account)
 
-	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
-	if err != nil {
-		slog.Error("Error getting installation link", "installationId", installationId, "error", err)
-		return err
-	}
-
-	if link == nil {
-		slog.Error("Installation link not found for upsert", "installationId", installationId)
+	// Retry fetching the link since webhook may arrive before OAuth callback creates it
+	var link *models.GithubAppInstallationLink
+	backoff := retry.WithMaxRetries(5, retry.NewConstant(2*time.Second))
+	err := retry.Do(ctx, backoff, func(ctx context.Context) error {
+		var dbErr error
+		link, dbErr = models.DB.GetGithubInstallationLinkForInstallationId(installationId)
+		if dbErr != nil {
+			return dbErr // permanent error, stop retrying
+		}
+		if link == nil {
+			return retry.RetryableError(errors.New("installation link not found"))
+		}
 		return nil
+	})
+	if err != nil {
+		slog.Error("Installation link not found after retries", "installationId", installationId, "error", err)
+		return fmt.Errorf("installation link not found for installation %d after retries: %w", installationId, err)
 	}
 
 	repoList := installation.Repositories
@@ -225,15 +236,23 @@ func handleInstallationRepositoriesEvent(ctx context.Context, gh utils.GithubCli
 
 	accountLogin, accountId := getAccountDetails(event.Installation.Account)
 
-	link, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)
-	if err != nil {
-		slog.Error("Error getting installation link", "installationId", installationId, "error", err)
-		return err
-	}
-
-	if link == nil {
-		slog.Error("Installation link not found for installation_repositories event", "installationId", installationId)
+	// Retry fetching the link since webhook may arrive before OAuth callback creates it
+	var link *models.GithubAppInstallationLink
+	backoff := retry.WithMaxRetries(5, retry.NewConstant(2*time.Second))
+	err := retry.Do(ctx, backoff, func(ctx context.Context) error {
+		var dbErr error
+		link, dbErr = models.DB.GetGithubInstallationLinkForInstallationId(installationId)
+		if dbErr != nil {
+			return dbErr // permanent error, stop retrying
+		}
+		if link == nil {
+			return retry.RetryableError(errors.New("installation link not found"))
+		}
 		return nil
+	})
+	if err != nil {
+		slog.Error("Installation link not found after retries", "installationId", installationId, "error", err)
+		return fmt.Errorf("installation link not found for installation %d after retries: %w", installationId, err)
 	}
 
 	client, _, err := gh.Get(appIdFromPayload, installationId)
