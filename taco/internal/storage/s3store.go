@@ -453,7 +453,11 @@ func (s *s3Store) Unlock(ctx context.Context, id string, lockID string) error {
         return err
     }
     if li == nil {
-        return fmt.Errorf("unit is not locked")
+        // Lock file doesn't exist - already unlocked. This is OK (idempotent).
+        // This can happen if the lock file was manually deleted or if there's
+        // a sync issue between S3 and the database.
+        fmt.Printf("[S3Store.Unlock] Lock file already gone for id=%s, treating as success\n", id)
+        return nil
     }
     if li.ID != lockID {
         return ErrLockConflict

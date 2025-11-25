@@ -743,22 +743,60 @@ func (h *Handler) UnlockUnit(c echo.Context) error {
 		)
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
+	
+	// Try to get lock ID from request body (optional for force unlock)
 	var req UnlockRequest
-	if err := c.Bind(&req); err != nil {
-		logger.Warn("Lock ID required for unlock",
+	_ = c.Bind(&req) // Ignore bind errors - empty body is OK
+	
+	// If no lock ID provided, this is a force unlock - fetch current lock
+	lockID := req.ID
+	if lockID == "" {
+		logger.Info("No lock ID provided, performing force unlock",
 			"operation", "unlock_unit",
 			"unit_id", id,
 		)
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Lock ID required"})
+		
+		currentLock, err := h.store.GetLock(ctx, id)
+		if err != nil {
+			if err == storage.ErrNotFound {
+				logger.Info("Unit not found for force unlock",
+					"operation", "unlock_unit",
+					"unit_id", id,
+				)
+				return c.JSON(http.StatusNotFound, map[string]string{"error": "Unit not found"})
+			}
+			logger.Error("Failed to get lock status",
+				"operation", "unlock_unit",
+				"unit_id", id,
+				"error", err,
+			)
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get lock status"})
+		}
+		
+		if currentLock == nil {
+			// Already unlocked
+			logger.Info("Unit already unlocked",
+				"operation", "unlock_unit",
+				"unit_id", id,
+			)
+			return c.JSON(http.StatusOK, map[string]string{"message": "Unit already unlocked"})
+		}
+		
+		lockID = currentLock.ID
+		logger.Info("Using current lock ID for force unlock",
+			"operation", "unlock_unit",
+			"unit_id", id,
+			"lock_id", lockID,
+		)
 	}
 	
 	logger.Info("Unlocking unit",
 		"operation", "unlock_unit",
 		"unit_id", id,
-		"lock_id", req.ID,
+		"lock_id", lockID,
 	)
 	
-	if err := h.store.Unlock(c.Request().Context(), id, req.ID); err != nil {
+	if err := h.store.Unlock(c.Request().Context(), id, lockID); err != nil {
 		if err == storage.ErrNotFound {
 			logger.Info("Unit not found for unlock",
 				"operation", "unlock_unit",
@@ -770,14 +808,14 @@ func (h *Handler) UnlockUnit(c echo.Context) error {
 			logger.Warn("Lock ID mismatch on unlock",
 				"operation", "unlock_unit",
 				"unit_id", id,
-				"lock_id", req.ID,
+				"lock_id", lockID,
 			)
 			return c.JSON(http.StatusConflict, map[string]string{"error": "Lock ID mismatch"})
 		}
 		logger.Error("Failed to unlock unit",
 			"operation", "unlock_unit",
 			"unit_id", id,
-			"lock_id", req.ID,
+			"lock_id", lockID,
 			"error", err,
 		)
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to unlock unit"})
@@ -786,7 +824,7 @@ func (h *Handler) UnlockUnit(c echo.Context) error {
 	logger.Info("Unit unlocked successfully",
 		"operation", "unlock_unit",
 		"unit_id", id,
-		"lock_id", req.ID,
+		"lock_id", lockID,
 	)
 	return c.JSON(http.StatusOK, map[string]string{"message": "Unit unlocked successfully"})
 }

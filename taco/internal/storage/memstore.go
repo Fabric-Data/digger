@@ -245,7 +245,8 @@ func (m *memStore) Unlock(ctx context.Context, id string, lockID string) error {
 	}
 	
     if !state.metadata.Locked {
-        return fmt.Errorf("unit is not locked")
+        // Already unlocked - this is OK (idempotent operation)
+        return nil
     }
 	
 	if state.metadata.LockInfo.ID != lockID {
