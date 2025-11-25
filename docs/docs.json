@@ -172,8 +172,7 @@
               "ce/local-development/overview",
               "ce/local-development/backend",
               "ce/local-development/statesman",
-              "ce/local-development/ui",
-              "ce/local-development/github-app"
+              "ce/local-development/ui"
             ]
           },
           {
