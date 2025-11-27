@@ -166,6 +166,16 @@
             ]
           },
           {
+            "group": "Local Development",
+            "pages": [
+              "ce/local-development/overview",
+              "ce/local-development/backend",
+              "ce/local-development/statesman",
+              "ce/local-development/ui",
+              "ce/local-development/github-app"
+            ]
+          },
+          {
             "group": "Contributing",
             "pages": [
               "ce/contributing/setup-dev-environment"
