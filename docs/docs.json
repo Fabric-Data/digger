@@ -90,6 +90,7 @@
           {
             "group": "How To",
             "pages": [
+              "ce/howto/noise-reduction",
               "ce/howto/specify-terraform-version",
               "ce/howto/caching-strategies",
               "ce/howto/apply-on-merge",
@@ -138,7 +139,6 @@
               "ce/reference/action-inputs",
               "ce/reference/api",
               "ce/reference/terraform.lock",
-              "ce/securing-digger/spec-signing",
               "ce/reference/comment-args"
             ]
           },

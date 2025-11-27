@@ -96,13 +96,17 @@ func Init() *slog.Logger {
 		},
 	})
 
+	// Wrap with Sentry handler to automatically send WARN and ERROR logs to Sentry
+	sentryHandler := NewSentryHandler(baseHandler)
+
 	// Create base logger WITHOUT context-aware handler (to avoid loops)
-	baseLogger = slog.New(baseHandler).With(
+	// Use sentryHandler so that direct baseLogger calls also go to Sentry
+	baseLogger = slog.New(sentryHandler).With(
 		slog.String("app", "digger-backend"),
 	)
 
-	// Create context-aware handler that wraps the base handler
-	contextHandler := &contextAwareHandler{handler: baseHandler}
+	// Create context-aware handler that wraps the Sentry handler
+	contextHandler := &contextAwareHandler{handler: sentryHandler}
 
 	// Create the default logger with context-aware handler
 	defaultLogger := slog.New(contextHandler).With(

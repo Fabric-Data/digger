@@ -647,18 +647,27 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		return
 	}
 
+	slog.Debug("Fetching job for status update", "jobId", jobId, "orgId", orgId)
 	job, err := models.DB.GetDiggerJob(jobId)
 	if err != nil {
-		slog.Error("Error fetching job", "jobId", jobId, "error", err)
+		slog.Error("DIAGNOSTIC #1: Failed to fetch job from database",
+			"jobId", jobId,
+			"error", err,
+			"errorType", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching job"})
 		return
 	}
 
 	batchId := *job.BatchID
 
+	slog.Debug("Fetching organization", "orgId", orgId, "jobId", jobId)
 	org, err := models.DB.GetOrganisationById(orgId)
 	if err != nil || org == nil {
-		slog.Error("Error getting organisation", "jobId", jobId, "error", err)
+		slog.Error("DIAGNOSTIC #2: Failed to fetch organization",
+			"orgId", orgId,
+			"jobId", jobId,
+			"error", err,
+			"orgIsNil", org == nil)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error fetching organisation"})
 		return
 	}
@@ -674,13 +683,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 	switch request.Status {
 	case "created":
 		job.Status = orchestrator_scheduler.DiggerJobCreated
+		slog.Debug("Updating job status to created", "jobId", jobId)
 		err := models.DB.UpdateDiggerJob(job)
 		if err != nil {
-			slog.Error("Error updating job status",
+			slog.Error("DIAGNOSTIC #3: Failed to update job status (created)",
 				"jobId", jobId,
 				"status", request.Status,
 				"error", err,
-			)
+				"errorType", fmt.Sprintf("%T", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating job status"})
 			return
 		}
@@ -695,13 +705,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 
 	case "triggered":
 		job.Status = orchestrator_scheduler.DiggerJobTriggered
+		slog.Debug("Updating job status to triggered", "jobId", jobId)
 		err := models.DB.UpdateDiggerJob(job)
 		if err != nil {
-			slog.Error("Error updating job status",
+			slog.Error("DIAGNOSTIC #3: Failed to update job status (triggered)",
 				"jobId", jobId,
 				"status", request.Status,
 				"error", err,
-			)
+				"errorType", fmt.Sprintf("%T", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating job status"})
 			return
 		}
@@ -720,13 +731,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 			slog.Debug("Adding workflow url to job", "jobId", jobId, "workflowUrl", request.WorkflowUrl)
 			job.WorkflowRunUrl = &request.WorkflowUrl
 		}
+		slog.Debug("Updating job status to started", "jobId", jobId)
 		err := models.DB.UpdateDiggerJob(job)
 		if err != nil {
-			slog.Error("Error updating job status",
+			slog.Error("DIAGNOSTIC #3: Failed to update job status (started)",
 				"jobId", jobId,
 				"status", request.Status,
 				"error", err,
-			)
+				"errorType", fmt.Sprintf("%T", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating job status"})
 			return
 		}
@@ -745,12 +757,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		job.Status = orchestrator_scheduler.DiggerJobSucceeded
 		job.TerraformOutput = request.TerraformOutput
 		if request.Footprint != nil {
+			slog.Debug("Marshalling plan footprint", "jobId", jobId)
 			job.PlanFootprint, err = json.Marshal(request.Footprint)
 			if err != nil {
-				slog.Error("Error marshalling plan footprint",
+				slog.Error("DIAGNOSTIC #4: Failed to marshal plan footprint",
 					"jobId", jobId,
 					"error", err,
-				)
+					"errorType", fmt.Sprintf("%T", err),
+					"footprintSize", len(fmt.Sprintf("%v", request.Footprint)))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error marshalling plan footprint"})
 				return
 			}
@@ -759,6 +773,22 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 				"jobId", jobId,
 				"footprintSize", len(job.PlanFootprint),
 			)
+		}
+
+		commitSha := batch.CommitSha
+		impactedProjectDb, err := models.DB.GetImpactedProjectSingle(batch.RepoFullName, commitSha, job.ProjectName)
+		if err != nil {
+			slog.Warn("Error fetching impacted project db", "jobId", jobId, "error", err, "commitSha", commitSha, "repoFullName", batch.RepoFullName)
+		} else if impactedProjectDb == nil && err == nil {
+			slog.Warn("Impacted project entry not found in db (maybe it was not synced in event start)", "jobId", jobId, "error", err, "commitSha", commitSha, "repoFullName", batch.RepoFullName)
+		} else {
+			if batch.BatchType == orchestrator_scheduler.DiggerCommandPlan {
+				impactedProjectDb.Planned = true
+			}
+			if batch.BatchType == orchestrator_scheduler.DiggerCommandApply {
+				impactedProjectDb.Applied = true
+			}
+			models.DB.GormDB.Save(impactedProjectDb)
 		}
 
 		var prCommentId *int64
@@ -774,13 +804,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		job.PRCommentUrl = request.PrCommentUrl
 		job.PRCommentId = prCommentId
 
+		slog.Debug("Updating job to succeeded", "jobId", jobId)
 		err = models.DB.UpdateDiggerJob(job)
 		if err != nil {
-			slog.Error("Error updating job",
+			slog.Error("DIAGNOSTIC #3: Failed to update job status (succeeded)",
 				"jobId", jobId,
 				"status", request.Status,
 				"error", err,
-			)
+				"errorType", fmt.Sprintf("%T", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving job"})
 			return
 		}
@@ -909,13 +940,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		segment.Track(*org, "", "", "github", "ci_job_failed", nil)
 		job.Status = orchestrator_scheduler.DiggerJobFailed
 		job.TerraformOutput = request.TerraformOutput
+		slog.Debug("Updating job status to failed", "jobId", jobId)
 		err := models.DB.UpdateDiggerJob(job)
 		if err != nil {
-			slog.Error("Error updating job status",
+			slog.Error("DIAGNOSTIC #3: Failed to update job status (failed)",
 				"jobId", jobId,
 				"status", request.Status,
 				"error", err,
-			)
+				"errorType", fmt.Sprintf("%T", err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving job"})
 			return
 		}
@@ -971,55 +1003,77 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		"jobId", jobId,
 	)
 
+	slog.Debug("Updating batch status", "batchId", batch.ID, "jobId", jobId)
 	err = models.DB.UpdateBatchStatus(batch)
 	if err != nil {
-		slog.Error("Error updating batch status",
+		slog.Error("DIAGNOSTIC #5: Failed to update batch status",
 			"batchId", batch.ID,
+			"jobId", jobId,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating batch status"})
 		return
 	}
 
+	slog.Debug("Fetching refreshed batch", "batchId", batch.ID, "jobId", jobId)
 	refreshedBatch, err := models.DB.GetDiggerBatch(&batch.ID)
 	if err != nil {
-		slog.Error("Error getting refreshed batch",
+		slog.Error("DIAGNOSTIC #6: Failed to fetch refreshed batch",
 			"batchId", batch.ID,
+			"jobId", jobId,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed batch"})
 		return
 	}
-	err = UpdateCheckStatusForBatch(d.GithubClientProvider, refreshedBatch)
+	//err = UpdateCheckStatusForBatch(d.GithubClientProvider, refreshedBatch)
+	slog.Debug("Attempting to update GitHub Check Run for batch",
+		"batchId", batch.ID,
+		"checkRunId", refreshedBatch.CheckRunId,
+		"vcs", refreshedBatch.VCS,
+		"jobId", jobId)
+	err = UpdateCheckRunForBatch(d.GithubClientProvider, refreshedBatch)
 	if err != nil {
-		slog.Error("Error updating check status",
+		slog.Warn("DIAGNOSTIC #7: Failed to update GitHub Check Run for batch (non-fatal)",
 			"batchId", batch.ID,
-			"batchId", batch.ID,
+			"checkRunId", refreshedBatch.CheckRunId,
+			"vcs", refreshedBatch.VCS,
 			"error", err,
-		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating aggregate status check"})
-		return
+			"errorType", fmt.Sprintf("%T", err))
+				// Continue processing - Check Run update is best-effort, not critical
+	} else {
+		slog.Debug("Successfully updated GitHub Check Run for batch", "batchId", batch.ID)
 	}
 
+	slog.Debug("Fetching refreshed job", "jobId", jobId, "batchId", batch.ID)
 	refreshedJob, err := models.DB.GetDiggerJob(jobId)
 	if err != nil {
-		slog.Error("Error getting refreshed job",
+		slog.Error("DIAGNOSTIC #8: Failed to fetch refreshed job",
 			"jobId", jobId,
+			"batchId", batch.ID,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed job"})
 		return
 	}
-	err = UpdateCheckStatusForJob(d.GithubClientProvider, refreshedJob)
+	//err = UpdateCommitStatusForJob(d.GithubClientProvider, refreshedJob)
+	slog.Debug("Attempting to update GitHub Check Run for job",
+		"jobId", jobId,
+		"checkRunId", refreshedJob.CheckRunId,
+		"vcs", refreshedJob.Batch.VCS,
+		"batchId", batch.ID)
+	err = UpdateCheckRunForJob(d.GithubClientProvider, refreshedJob)
 	if err != nil {
-		slog.Error("Error updating check status",
+		slog.Warn("DIAGNOSTIC #9: Failed to update GitHub Check Run for job (non-fatal)",
 			"jobId", jobId,
+			"checkRunId", refreshedJob.CheckRunId,
 			"batchId", batch.ID,
-			"jobId", jobId,
+			"vcs", refreshedJob.Batch.VCS,
 			"error", err,
-		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating aggregate status check"})
-		return
+			"errorType", fmt.Sprintf("%T", err))
+		// Continue processing - Check Run update is best-effort, not critical
+	} else {
+		slog.Debug("Successfully updated GitHub Check Run for job", "jobId", jobId)
 	}
 
 	if batch.ReportTerraformOutputs {
@@ -1057,12 +1111,14 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 	}
 
 	// return batch summary to client
+	slog.Debug("Marshalling batch to JSON", "batchId", batch.ID, "jobId", jobId)
 	res, err := batch.MapToJsonStruct()
 	if err != nil {
-		slog.Error("Error getting batch details",
+		slog.Error("DIAGNOSTIC #10: Failed to marshal batch to JSON",
 			"batchId", batch.ID,
+			"jobId", jobId,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting batch details"})
 		return
 	}
@@ -1331,7 +1387,7 @@ func CreateTerraformOutputsSummary(gh utils.GithubClientProvider, batch *models.
 
 		summaryEndpoint := os.Getenv("DIGGER_AI_SUMMARY_ENDPOINT")
 		if summaryEndpoint == "" {
-			slog.Error("AI summary endpoint not configured", "batchId", batch.ID)
+			slog.Warn("AI summary endpoint not configured, ignorning", "batchId", batch.ID)
 			updateErr := prService.EditComment(batch.PrNumber, batch.AiSummaryCommentId,
 				":x: could not generate AI summary \n\n AI summary endpoint not configured")
 			if updateErr != nil {
@@ -1492,9 +1548,16 @@ func AutomergePRforBatchIfEnabled(gh utils.GithubClientProvider, batch *models.D
 		"batchType", batch.BatchType,
 	)
 
+	allApplied, _, err := models.DB.AllImpactedProjectApplied(batch.RepoFullName, batch.CommitSha)
+	if err != nil {
+		slog.Error("Error fetching all applied projects", "batchId", batch.ID, "error", err)
+		slog.Warn("falling back to using batch entry")
+		allApplied = batch.CoverAllImpactedProjects
+	}
+
 	if batch.Status == orchestrator_scheduler.BatchJobSucceeded &&
 		batch.BatchType == orchestrator_scheduler.DiggerCommandApply &&
-		batch.CoverAllImpactedProjects == true &&
+		allApplied &&
 		automerge == true {
 
 		slog.Info("Conditions met for auto-merge, proceeding",

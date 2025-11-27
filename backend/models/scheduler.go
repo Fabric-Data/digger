@@ -11,6 +11,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type ImpactedProject struct {
+	gorm.Model
+	ID           uuid.UUID `gorm:"primary_key"`
+	RepoFullName string    `gorm:"index:idx_org_repo"`
+	CommitSha    string    `gorm:"index:idx_org_repo"`
+	PrNumber     *int
+	Branch       *string
+	ProjectName  string
+	Planned      bool
+	Applied      bool
+}
+
 type DiggerJobParentLink struct {
 	gorm.Model
 	DiggerJobId       string `gorm:"size:50,index:idx_digger_job_id"`
@@ -26,10 +38,14 @@ const DiggerVCSBitbucket DiggerVCSType = "bitbucket"
 type DiggerBatch struct {
 	gorm.Model
 	ID                       uuid.UUID `gorm:"primary_key"`
+	DiggerBatchID            string    `gorm:"size:20,index:idx_digger_batch_id"` // shorter version of the ID to be able to use in check run
 	Layer                    uint
 	VCS                      DiggerVCSType
 	PrNumber                 int
+	CommitSha                string
 	CommentId                *int64
+	CheckRunId               *string
+	CheckRunUrl              *string
 	AiSummaryCommentId       string
 	Status                   orchestrator_scheduler.DiggerBatchStatus
 	BranchName               string
@@ -58,6 +74,8 @@ type DiggerJob struct {
 	BatchID                      *string `gorm:"index:idx_digger_job_id"`
 	PRCommentUrl                 string
 	PRCommentId                  *int64
+	CheckRunId                   *string
+	CheckRunUrl                  *string
 	DiggerJobSummary             DiggerJobSummary
 	DiggerJobSummaryID           uint
 	SerializedJobSpec            []byte
@@ -74,6 +92,7 @@ type DiggerJob struct {
 	WorkflowFile    string
 	WorkflowRunUrl  *string
 	StatusUpdatedAt time.Time
+	ReporterType string `gorm:"default:'lazy'"` // temporary, to be replaced by SerializedReporterSpec
 }
 
 type DiggerJobSummary struct {
@@ -185,7 +204,7 @@ func (b *DiggerBatch) MapToJsonStruct() (orchestrator_scheduler.SerializedBatch,
 	return res, nil
 }
 
-func GetStatusCheckForJob(job *DiggerJob) (string, error) {
+func GetCommitStatusForJob(job *DiggerJob) (string, error) {
 	switch job.Status {
 	case orchestrator_scheduler.DiggerJobStarted:
 		return "pending", nil
@@ -198,5 +217,51 @@ func GetStatusCheckForJob(job *DiggerJob) (string, error) {
 	case orchestrator_scheduler.DiggerJobFailed:
 		return "failed", nil
 	}
+	return "", fmt.Errorf("unknown job status: %v", job.Status)
+}
+
+func GetCheckRunStatusForJob(job *DiggerJob) (string, error) {
+	switch job.Status {
+	case orchestrator_scheduler.DiggerJobStarted:
+		return "in_progress", nil
+	case orchestrator_scheduler.DiggerJobTriggered:
+		return "in_progress", nil
+	case orchestrator_scheduler.DiggerJobCreated:
+		return "in_progress", nil
+	case orchestrator_scheduler.DiggerJobQueuedForRun:
+		return "queued", nil
+	case orchestrator_scheduler.DiggerJobSucceeded:
+		return "completed", nil
+	case orchestrator_scheduler.DiggerJobFailed:
+		return "completed", nil
+	}
+	slog.Error("Unknown job status in GetCheckRunStatusForJob - this will cause GitHub API 422 error",
+		"jobId", job.DiggerJobID,
+		"jobStatus", job.Status,
+		"jobStatusInt", int(job.Status),
+		"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
+	return "", fmt.Errorf("unknown job status: %v", job.Status)
+}
+
+func GetCheckRunConclusionForJob(job *DiggerJob) (string, error) {
+	switch job.Status {
+	case orchestrator_scheduler.DiggerJobStarted:
+		return "", nil
+	case orchestrator_scheduler.DiggerJobTriggered:
+		return "", nil
+	case orchestrator_scheduler.DiggerJobCreated:
+		return "", nil
+	case orchestrator_scheduler.DiggerJobQueuedForRun:
+		return "", nil
+	case orchestrator_scheduler.DiggerJobSucceeded:
+		return "success", nil
+	case orchestrator_scheduler.DiggerJobFailed:
+		return "failure", nil
+	}
+	slog.Error("Unknown job status in GetCheckRunConclusionForJob - this will cause GitHub API 422 error",
+		"jobId", job.DiggerJobID,
+		"jobStatus", job.Status,
+		"jobStatusInt", int(job.Status),
+		"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
 	return "", fmt.Errorf("unknown job status: %v", job.Status)
 }
