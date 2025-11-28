@@ -831,7 +831,7 @@ func getDiggerConfigForPR(gh utils.GithubClientProvider, orgId uint, prLabels []
 			"branch", prBranch,
 			"error", err,
 		)
-		return "", nil, nil, nil, nil, nil, nil, fmt.Errorf("error loading digger.yml: %v", err)
+		return "", nil, nil, nil, nil, nil, nil, fmt.Errorf("error loading digger.yml: %w", err)
 	}
 
 	return diggerYmlStr, ghService, config, dependencyGraph, &prBranch, &prCommitSha, changedFiles, nil
@@ -894,7 +894,7 @@ func GetDiggerConfigForBranch(gh utils.GithubClientProvider, installationId int6
 			"branch", branch,
 			"error", err,
 		)
-		return "", nil, nil, nil, fmt.Errorf("error cloning and loading config %v", err)
+		return "", nil, nil, nil, fmt.Errorf("error cloning and loading config: %w", err)
 	}
 
 	projectCount := 0
