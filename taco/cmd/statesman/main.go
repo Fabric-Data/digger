@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/diggerhq/digger/opentaco/internal/analytics"
@@ -21,6 +22,7 @@ import (
 	"github.com/diggerhq/digger/opentaco/internal/repositories"
 	"github.com/diggerhq/digger/opentaco/internal/sandbox"
 	"github.com/diggerhq/digger/opentaco/internal/storage"
+	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
@@ -101,7 +103,16 @@ func main() {
 		if err != nil {
 			slog.Warn("Failed to list units from storage", "error", err)
 		} else {
+			syncedCount := 0
+			skippedCount := 0
 			for _, unit := range units {
+				// Skip non-unit paths (config-versions, plans, runs, etc.)
+				// Valid unit paths are: {org-uuid}/{unit-uuid}
+				if !isValidUnitPath(unit.ID) {
+					skippedCount++
+					continue
+				}
+				
 				if err := queryStore.SyncEnsureUnit(context.Background(), unit.ID); err != nil {
 					slog.Warn("Failed to sync unit", "unit_id", unit.ID, "error", err)
 					continue
@@ -110,8 +121,9 @@ func main() {
 				if err := queryStore.SyncUnitMetadata(context.Background(), unit.ID, unit.Size, unit.Updated); err != nil {
 					slog.Warn("Failed to sync metadata for unit", "unit_id", unit.ID, "error", err)
 				}
+				syncedCount++
 			}
-			slog.Info("Synced units from storage to database", "count", len(units))
+			slog.Info("Synced units from storage to database", "synced", syncedCount, "skipped_non_units", skippedCount)
 		}
 	} else {
 		slog.Info("Query backend already has units, skipping sync", "count", len(existingUnits))
@@ -274,4 +286,23 @@ func main() {
 
 	analytics.SendEssential("server_shutdown_complete")
 	slog.Info("Server shutdown complete")
+}
+
+// isValidUnitPath checks if a storage path matches the expected unit format: {org-uuid}/{unit-uuid}
+// This filters out TFE-related paths like config-versions/, plans/, runs/, etc.
+func isValidUnitPath(path string) bool {
+	parts := strings.SplitN(strings.Trim(path, "/"), "/", 2)
+	if len(parts) != 2 {
+		return false
+	}
+
+	// Both parts must be valid UUIDs
+	if _, err := uuid.Parse(parts[0]); err != nil {
+		return false
+	}
+	if _, err := uuid.Parse(parts[1]); err != nil {
+		return false
+	}
+
+	return true
 }

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/diggerhq/digger/opentaco/internal/analytics"
+	"github.com/diggerhq/digger/opentaco/internal/github"
 	"github.com/diggerhq/digger/opentaco/internal/tfe"
 
 	authpkg "github.com/diggerhq/digger/opentaco/internal/auth"
@@ -362,6 +364,48 @@ func RegisterRoutes(e *echo.Echo, deps Dependencies) {
 		})
 	})
 
+	// Register GitHub webhook for benchmarks (if OPENTACO_GITHUB_TOKEN is set)
+	RegisterGitHubWebhook(e, deps)
+
 	// Register webhook-authenticated internal routes (if OPENTACO_ENABLE_INTERNAL_ENDPOINTS is set)
 	RegisterInternalRoutes(e, deps)
+}
+
+// RegisterGitHubWebhook registers the GitHub webhook endpoint for benchmark operations.
+// This enables /opentaco plan, /opentaco apply, /opentaco destroy commands via PR comments.
+// Required env vars (BOTH must be set to enable):
+//   - OPENTACO_GITHUB_TOKEN: GitHub personal access token or app token
+//   - OPENTACO_GITHUB_WEBHOOK_SECRET: Secret for validating webhook signatures (required for security)
+func RegisterGitHubWebhook(e *echo.Echo, deps Dependencies) {
+	githubToken := os.Getenv("OPENTACO_GITHUB_TOKEN")
+	webhookSecret := os.Getenv("OPENTACO_GITHUB_WEBHOOK_SECRET")
+
+	// Require BOTH token and secret to enable - security by default
+	if githubToken == "" || webhookSecret == "" {
+		if githubToken != "" && webhookSecret == "" {
+			log.Println("WARNING: OPENTACO_GITHUB_TOKEN set but OPENTACO_GITHUB_WEBHOOK_SECRET missing - webhook disabled for security")
+		}
+		return
+	}
+
+	log.Println("Registering GitHub webhook endpoint at /webhooks/github")
+
+	// Create GitHub client
+	ghClient := github.NewClient(githubToken)
+
+	// Create command executor with sandbox and storage
+	executor := github.NewCommandExecutor(
+		ghClient,
+		deps.Sandbox,
+		deps.Repository,
+		deps.BlobStore,
+	)
+
+	// Create webhook handler
+	handler := github.NewWebhookHandler(ghClient, executor)
+
+	// Register the webhook endpoint (no auth required - uses webhook signature validation)
+	e.POST("/webhooks/github", handler.HandleWebhook)
+
+	log.Println("GitHub webhook registered successfully")
 }

@@ -47,13 +47,15 @@ export class E2BSandboxRunner implements SandboxRunner {
         appendLog?.(chunk);
       };
 
-      // Run terraform init
+      // Run terraform init (with AWS creds if configured for benchmark)
+      const metadata = job.payload.metadata;
       await this.runTerraformCommand(
         sandbox,
         workDir,
         ["init", "-input=false", "-no-color"],
         logs,
         streamLog,
+        metadata,
       );
 
       // Run terraform plan
@@ -61,13 +63,16 @@ export class E2BSandboxRunner implements SandboxRunner {
       if (job.payload.isDestroy) {
         planArgs.splice(1, 0, "-destroy");
       }
-      await this.runTerraformCommand(sandbox, workDir, planArgs, logs, streamLog);
+      await this.runTerraformCommand(sandbox, workDir, planArgs, logs, streamLog, metadata);
 
       // Get plan JSON
       const showResult = await this.runTerraformCommand(
         sandbox,
         workDir,
         ["show", "-json", "tfplan.binary"],
+        undefined,
+        undefined,
+        metadata,
       );
 
       const planJSON = showResult.stdout;
@@ -103,30 +108,61 @@ export class E2BSandboxRunner implements SandboxRunner {
           appendLog?.(chunk);
         };
 
-      // Run terraform init
+      // Run terraform init (with AWS creds if configured for benchmark)
+      const metadata = job.payload.metadata;
       await this.runTerraformCommand(
         sandbox,
         workDir,
         ["init", "-input=false", "-no-color"],
         logs,
         streamLog,
+        metadata,
       );
 
       // Run terraform apply/destroy
       const applyCommand = job.payload.isDestroy ? "destroy" : "apply";
-      await this.runTerraformCommand(
+      const applyResult = await this.runTerraformCommand(
         sandbox,
         workDir,
         [applyCommand, "-auto-approve", "-input=false", "-no-color"],
         logs,
         streamLog,
+        metadata,
       );
 
-      // Read the state file
-      const statePath = `${workDir}/terraform.tfstate`;
-      const stateContent = await sandbox.files.read(statePath);
+      // Log the apply output for debugging
+      logger.info({ 
+        stdout: applyResult.stdout.slice(-500),
+        stderr: applyResult.stderr.slice(-500),
+      }, "terraform apply output (last 500 chars)");
+
+      // Use terraform show to get state - works regardless of workspace configuration
+      // This handles both: terraform.tfstate and terraform.tfstate.d/<workspace>/terraform.tfstate
+      let stateBase64 = "";
+      
+      try {
+        const showResult = await this.runTerraformCommand(
+          sandbox,
+          workDir,
+          ["show", "-json"],
+          undefined,
+          undefined,
+          metadata,
+        );
+        
+        if (showResult.stdout && showResult.stdout.trim() !== "{}") {
+          stateBase64 = Buffer.from(showResult.stdout, "utf8").toString("base64");
+          logger.info({ stateSize: showResult.stdout.length }, "captured state via terraform show");
+        } else {
+          logger.info("terraform show returned empty state");
+        }
+      } catch (err) {
+        // State doesn't exist - this is OK for empty applies or destroys
+        logger.warn({ error: err }, "no state found after apply (may be empty apply)");
+      }
+
       const result: SandboxRunResult = {
-        state: Buffer.from(stateContent, "utf8").toString("base64"),
+        state: stateBase64,
       };
 
       return { logs: logs.join(""), result };
@@ -167,6 +203,27 @@ export class E2BSandboxRunner implements SandboxRunner {
     (sandbox as any)._requestedEngine = engine;
     
     return { sandbox, needsInstall };
+  }
+
+  /**
+   * Build environment variables for Terraform execution.
+   * Includes AWS credentials if provided in metadata for benchmark runs.
+   */
+  private buildTerraformEnvs(metadata?: Record<string, string>): Record<string, string> {
+    const envs: Record<string, string> = {
+      TF_IN_AUTOMATION: "1",
+    };
+
+    // Inject AWS credentials if provided (for benchmark runs with real resources)
+    if (metadata?.AWS_ACCESS_KEY_ID) {
+      envs.AWS_ACCESS_KEY_ID = metadata.AWS_ACCESS_KEY_ID;
+      envs.AWS_SECRET_ACCESS_KEY = metadata.AWS_SECRET_ACCESS_KEY || "";
+      envs.AWS_REGION = metadata.AWS_REGION || "us-east-1";
+      // Also set default region for AWS SDK
+      envs.AWS_DEFAULT_REGION = envs.AWS_REGION;
+    }
+
+    return envs;
   }
 
 
@@ -231,6 +288,20 @@ export class E2BSandboxRunner implements SandboxRunner {
     // Use gunzip + tar separately for better compatibility across tar versions
     await sandbox.commands.run(`cd ${workDir} && gunzip -c bundle.tar.gz | tar -x --exclude='terraform.tfstate' --exclude='terraform.tfstate.backup'`);
 
+    // Debug: List extracted files to understand archive structure
+    const listResult = await sandbox.commands.run(`find ${workDir} -type f -name "*.tf" | head -20`);
+    logger.info({ 
+      tfFiles: listResult.stdout.trim().split('\n').filter(Boolean),
+      workDir,
+      workingDirectory: job.payload.workingDirectory || '(none)'
+    }, "extracted terraform files");
+
+    // Also list all files for debugging
+    const allFilesResult = await sandbox.commands.run(`ls -la ${workDir}`);
+    logger.info({ 
+      files: allFilesResult.stdout
+    }, "workspace directory listing");
+
     // Determine the execution directory
     const execDir = job.payload.workingDirectory
       ? `${workDir}/${job.payload.workingDirectory}`
@@ -273,6 +344,7 @@ export class E2BSandboxRunner implements SandboxRunner {
     args: string[],
     logBuffer?: string[],
     appendLog?: (chunk: string) => void,
+    metadata?: Record<string, string>,
   ): Promise<{ stdout: string; stderr: string }> {
     const engine = (sandbox as any)._requestedEngine || "terraform";
     const binaryName = engine === "tofu" ? "tofu" : "terraform";
@@ -291,9 +363,7 @@ export class E2BSandboxRunner implements SandboxRunner {
 
     const result = await sandbox.commands.run(cmdStr, {
       cwd,
-      envs: {
-        TF_IN_AUTOMATION: "1",
-      },
+      envs: this.buildTerraformEnvs(metadata),
       onStdout: pipeChunk,
       onStderr: pipeChunk,
     });
