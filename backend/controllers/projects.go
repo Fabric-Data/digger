@@ -1026,7 +1026,6 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed batch"})
 		return
 	}
-	//err = UpdateCheckStatusForBatch(d.GithubClientProvider, refreshedBatch)
 	slog.Debug("Attempting to update GitHub Check Run for batch",
 		"batchId", batch.ID,
 		"checkRunId", refreshedBatch.CheckRunId,
@@ -1056,7 +1055,6 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed job"})
 		return
 	}
-	//err = UpdateCommitStatusForJob(d.GithubClientProvider, refreshedJob)
 	slog.Debug("Attempting to update GitHub Check Run for job",
 		"jobId", jobId,
 		"checkRunId", refreshedJob.CheckRunId,
