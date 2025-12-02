@@ -258,10 +258,10 @@ func GetCheckRunConclusionForJob(job *DiggerJob) (string, error) {
 	case orchestrator_scheduler.DiggerJobFailed:
 		return "failure", nil
 	}
-		slog.Error("Unknown job status in GetCheckRunConclusionForJob - this will cause GitHub API 422 error",
-		"jobId", job.DiggerJobID,
-		"jobStatus", job.Status,
-		"jobStatusInt", int(job.Status),
-		"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
+	slog.Error("Unknown job status in GetCheckRunConclusionForJob - this will cause GitHub API 422 error",
+	"jobId", job.DiggerJobID,
+	"jobStatus", job.Status,
+	"jobStatusInt", int(job.Status),
+	"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
 	return "", fmt.Errorf("unknown job status: %v", job.Status)
 }
