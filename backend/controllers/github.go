@@ -74,9 +74,10 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 					slog.Error("Failed to handle installation deleted event", "error", err)
 				}
 			} else if *event.Action == "created" || *event.Action == "unsuspended" || *event.Action == "new_permissions_accepted" {
-				// Use background context so work continues after HTTP response
-				if err := handleInstallationUpsertEvent(context.Background(), gh, event, appId64); err != nil {
+				if err := handleInstallationUpsertEvent(c.Request.Context(), gh, event, appId64); err != nil {
 					slog.Error("Failed to handle installation upsert event", "error", err)
+					c.String(http.StatusAccepted, "Failed to handle webhook event.")
+					return
 				}
 			}
 		}(c.Request.Context())

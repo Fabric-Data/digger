@@ -120,19 +120,30 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 	)
 
 	if batch.CheckRunId == nil {
-		slog.Error("Error checking run id, found nil", "batchId", batch.ID)
+		slog.Warn("Check Run update skipped - CheckRunId is nil",
+			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
+			"batchStatus", batch.Status,
+			"reason", "checkRunId_nil")
 		return fmt.Errorf("error checking run id, found nil batch")
 	}
 
 	if batch.VCS != models.DiggerVCSGithub {
+		slog.Warn("Check Run update skipped - non-GitHub VCS",
+			"batchId", batch.ID,
+			"vcs", batch.VCS,
+			"prNumber", batch.PrNumber,
+			"reason", "non_github_vcs")
 		return fmt.Errorf("We only support github VCS for modern checks at the moment")
 	}
 	prService, err := utils.GetPrServiceFromBatch(batch, gh)
 	if err != nil {
-		slog.Error("Error getting PR service",
+		slog.Warn("Check Run update failed - could not get PR service",
 			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "pr_service_unavailable")
 		return fmt.Errorf("error getting github service: %v", err)
 	}
 
@@ -140,19 +151,23 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 	diggerYmlString := batch.DiggerConfig
 	diggerConfigYml, err := digger_config.LoadDiggerConfigYamlFromString(diggerYmlString)
 	if err != nil {
-		slog.Error("Error loading Digger config from batch",
+		slog.Warn("Check Run update failed - could not load Digger config",
 			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "config_load_failed")
 		return fmt.Errorf("error loading digger config from batch: %v", err)
 	}
 
 	config, _, err := digger_config.ConvertDiggerYamlToConfig(diggerConfigYml)
 	if err != nil {
-		slog.Error("Error converting Digger YAML to config",
+		slog.Warn("Check Run update failed - could not convert Digger YAML to config",
 			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "config_conversion_failed")
 		return fmt.Errorf("error converting Digger YAML to config: %v", err)
 	}
 
@@ -162,10 +177,12 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 
 	serializedBatch, err := batch.MapToJsonStruct()
 	if err != nil {
-		slog.Error("Error mapping batch to json struct",
+		slog.Warn("Check Run update failed - could not serialize batch",
 			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "batch_serialization_failed")
 		return fmt.Errorf("error mapping batch to json struct: %v", err)
 	}
 	slog.Debug("Updating PR status for batch",
@@ -174,16 +191,22 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 
 	jobs, err := models.DB.GetDiggerJobsForBatch(batch.ID)
 	if err != nil {
-		slog.Error("Error getting jobs for batch",
+		slog.Warn("Check Run update failed - could not get jobs for batch",
 			"batchId", batch.ID,
-			"error", err)
+			"prNumber", batch.PrNumber,
+			"error", err,
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "jobs_fetch_failed")
 		return fmt.Errorf("error getting jobs for batch: %v", err)
 	}
 	message, err := utils.GenerateRealtimeCommentMessage(jobs, batch.BatchType)
 	if err != nil {
-		slog.Error("Error generating realtime comment message",
+		slog.Warn("Check Run update failed - could not generate comment message",
 			"batchId", batch.ID,
-			"error", err)
+			"prNumber", batch.PrNumber,
+			"error", err,
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "message_generation_failed")
 		return fmt.Errorf("error generating realtime comment message: %v", err)
 	}
 
@@ -206,7 +229,21 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 		}
 		_, err = ghPrService.UpdateCheckRun(*batch.CheckRunId, opts)
 		if err != nil {
-			slog.Error("Error updating check run", "error", err, "batchId", batch.ID, "prNumber", batch.PrNumber)
+			slog.Warn("GitHub Check Run API call failed for batch plan",
+				"operation", "UpdateCheckRun",
+				"batchId", batch.ID,
+				"checkRunId", *batch.CheckRunId,
+				"prNumber", batch.PrNumber,
+				"batchStatus", batch.Status,
+				"batchType", "plan",
+				"error", err,
+				"errorType", fmt.Sprintf("%T", err),
+				"reason", "github_api_failed")
+		} else {
+			slog.Debug("Successfully updated Check Run for batch plan",
+				"batchId", batch.ID,
+				"checkRunId", *batch.CheckRunId,
+				"status", status)
 		}
 	} else {
 		if disableDiggerApplyStatusCheck == false {
@@ -223,7 +260,21 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 			}
 			_, err = ghPrService.UpdateCheckRun(*batch.CheckRunId, opts)
 			if err != nil {
-				slog.Error("Error updating check run", "batchId", batch.ID, "prNumber", batch.PrNumber)
+				slog.Warn("GitHub Check Run API call failed for batch apply",
+					"operation", "UpdateCheckRun",
+					"batchId", batch.ID,
+					"checkRunId", *batch.CheckRunId,
+					"prNumber", batch.PrNumber,
+					"batchStatus", batch.Status,
+					"batchType", "apply",
+					"error", err,
+					"errorType", fmt.Sprintf("%T", err),
+					"reason", "github_api_failed")
+			} else {
+				slog.Debug("Successfully updated Check Run for batch apply",
+					"batchId", batch.ID,
+					"checkRunId", *batch.CheckRunId,
+					"status", status)
 			}
 		}
 	}
@@ -242,12 +293,22 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 	)
 
 	if batch.VCS != models.DiggerVCSGithub {
-		slog.Error("Error updating PR status for job only github is supported", "batchid", batch.ID, "vcs", batch.VCS)
+		slog.Warn("Check Run update skipped for job - non-GitHub VCS",
+			"jobId", job.DiggerJobID,
+			"batchId", batch.ID,
+			"vcs", batch.VCS,
+			"prNumber", batch.PrNumber,
+			"reason", "non_github_vcs")
 		return fmt.Errorf("Error updating PR status for job only github is supported")
 	}
 
 	if job.CheckRunId == nil {
-		slog.Error("Error updating PR status, could not find checkRunId in job", "diggerJobId", job.DiggerJobID)
+		slog.Warn("Check Run update skipped for job - CheckRunId is nil",
+			"jobId", job.DiggerJobID,
+			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
+			"jobStatus", job.Status,
+			"reason", "checkRunId_nil")
 		return fmt.Errorf("Error updating PR status, could not find checkRunId in job")
 	}
 
@@ -255,29 +316,79 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 	ghService := prService.(*github.GithubService)
 
 	if err != nil {
-		slog.Error("Error getting PR service",
+		slog.Warn("Check Run update failed for job - could not get PR service",
+			"jobId", job.DiggerJobID,
 			"batchId", batch.ID,
+			"prNumber", batch.PrNumber,
 			"error", err,
-		)
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "pr_service_unavailable")
 		return fmt.Errorf("error getting github service: %v", err)
 	}
 
 	var jobSpec orchestrator_scheduler.JobJson
 	err = json.Unmarshal([]byte(job.SerializedJobSpec), &jobSpec)
 	if err != nil {
-		slog.Error("Could not unmarshal job spec", "jobId", job.DiggerJobID, "error", err)
+		slog.Warn("Check Run update failed for job - could not unmarshal job spec",
+			"jobId", job.DiggerJobID,
+			"batchId", batch.ID,
+			"error", err,
+			"errorType", fmt.Sprintf("%T", err),
+			"reason", "job_spec_unmarshal_failed")
 		return fmt.Errorf("could not unmarshal json string: %v", err)
 	}
 
 	isPlan := jobSpec.IsPlan()
 	status, err := models.GetCheckRunStatusForJob(job)
 	if err != nil {
+		slog.Warn("Failed to get check run status for job",
+			"jobId", job.DiggerJobID,
+			"jobStatus", job.Status,
+			"error", err)
 		return fmt.Errorf("could not get status check for job: %v", err)
 	}
 
 	conclusion, err := models.GetCheckRunConclusionForJob(job)
 	if err != nil {
+		slog.Warn("Failed to get check run conclusion for job",
+			"jobId", job.DiggerJobID,
+			"jobStatus", job.Status,
+			"error", err)
 		return fmt.Errorf("could not get conclusion for job: %v", err)
+	}
+	
+	// Validate status and conclusion before sending to GitHub
+	validStatuses := map[string]bool{"queued": true, "in_progress": true, "completed": true}
+	validConclusions := map[string]bool{"": true, "success": true, "failure": true, "neutral": true, "cancelled": true, "timed_out": true, "action_required": true, "skipped": true}
+	
+	if !validStatuses[status] {
+		slog.Warn("Invalid Check Run status detected",
+			"jobId", job.DiggerJobID,
+			"jobStatus", job.Status,
+			"checkRunStatus", status,
+			"validStatuses", []string{"queued", "in_progress", "completed"})
+	}
+	
+	if !validConclusions[conclusion] {
+		slog.Warn("Invalid Check Run conclusion detected",
+			"jobId", job.DiggerJobID,
+			"jobStatus", job.Status,
+			"checkRunConclusion", conclusion,
+			"validConclusions", []string{"", "success", "failure", "neutral", "cancelled", "timed_out", "action_required", "skipped"})
+	}
+	
+	slog.Debug("Preparing to update Check Run for job",
+		"jobId", job.DiggerJobID,
+		"jobStatus", job.Status,
+		"checkRunStatus", status,
+		"checkRunConclusion", conclusion,
+		"isPlan", isPlan)
+
+	// Only pass conclusion to GitHub API when job is completed (non-empty conclusion).
+	// GitHub rejects empty string as conclusion - it must be omitted for in-progress jobs.
+	var conclusionPtr *string
+	if conclusion != "" {
+		conclusionPtr = &conclusion
 	}
 
 	text := "" +
@@ -296,7 +407,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		title := fmt.Sprintf("%v to create %v to update %v to delete", job.DiggerJobSummary.ResourcesCreated, job.DiggerJobSummary.ResourcesUpdated, job.DiggerJobSummary.ResourcesDeleted)
 		opts := github.GithubCheckRunUpdateOptions{
 			Status:     &status,
-			Conclusion: &conclusion,
+			Conclusion: conclusionPtr,
 			Title:      &title,
 			Summary:    &summary,
 			Text:       &text,
@@ -304,13 +415,28 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		}
 		_, err = ghService.UpdateCheckRun(*job.CheckRunId, opts)
 		if err != nil {
-			slog.Error("Error updating PR status for job", "error", err)
+			slog.Warn("GitHub Check Run API call failed for job plan",
+				"operation", "UpdateCheckRun",
+				"jobId", job.DiggerJobID,
+				"checkRunId", *job.CheckRunId,
+				"batchId", batch.ID,
+				"prNumber", batch.PrNumber,
+				"jobStatus", job.Status,
+				"jobType", "plan",
+				"error", err,
+				"errorType", fmt.Sprintf("%T", err),
+				"reason", "github_api_failed")
+		} else {
+			slog.Debug("Successfully updated Check Run for job plan",
+				"jobId", job.DiggerJobID,
+				"checkRunId", *job.CheckRunId,
+				"status", status)
 		}
 	} else {
 		title := fmt.Sprintf("%v created %v updated %v deleted", job.DiggerJobSummary.ResourcesCreated, job.DiggerJobSummary.ResourcesUpdated, job.DiggerJobSummary.ResourcesDeleted)
 		opts := github.GithubCheckRunUpdateOptions{
 			Status:     &status,
-			Conclusion: &conclusion,
+			Conclusion: conclusionPtr,
 			Title:      &title,
 			Summary:    &summary,
 			Text:       &text,
@@ -318,7 +444,22 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		}
 		_, err = ghService.UpdateCheckRun(*job.CheckRunId, opts)
 		if err != nil {
-			slog.Error("Error updating PR status for job", "error", err)
+			slog.Warn("GitHub Check Run API call failed for job apply",
+				"operation", "UpdateCheckRun",
+				"jobId", job.DiggerJobID,
+				"checkRunId", *job.CheckRunId,
+				"batchId", batch.ID,
+				"prNumber", batch.PrNumber,
+				"jobStatus", job.Status,
+				"jobType", "apply",
+				"error", err,
+				"errorType", fmt.Sprintf("%T", err),
+				"reason", "github_api_failed")
+		} else {
+			slog.Debug("Successfully updated Check Run for job apply",
+				"jobId", job.DiggerJobID,
+				"checkRunId", *job.CheckRunId,
+				"status", status)
 		}
 	}
 	return nil

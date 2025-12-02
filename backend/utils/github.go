@@ -277,10 +277,18 @@ func SetPRCheckForJobs(ghService *github2.GithubService, prNumber int, jobs []sc
 				)
 				var actions []*github.CheckRunAction
 				cr, err = ghService.CreateCheckRun(job.GetProjectAlias()+"/plan", "in_progress", "", "Waiting for plan...", "", "Plan result will appear here", commitSha, actions)
+				if err != nil {
+					slog.Error("Failed to create check run for plan",
+						"prNumber", prNumber,
+						"project", job.ProjectName,
+						"error", err,
+					)
+					return nil, nil, fmt.Errorf("Error setting pr status: %v", err)
+				}
 				jobCheckRunIds[job.ProjectName] = CheckRunData{
-						Id: strconv.FormatInt(*cr.ID, 10),
-						Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber, ),
-					}
+					Id: strconv.FormatInt(*cr.ID, 10),
+					Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber),
+				}
 
 			case "digger apply":
 				slog.Debug("Setting PR status for apply",
@@ -288,19 +296,18 @@ func SetPRCheckForJobs(ghService *github2.GithubService, prNumber int, jobs []sc
 					"project", job.ProjectName,
 				)
 				cr, err = ghService.CreateCheckRun(job.GetProjectAlias()+"/apply", "in_progress", "", "Waiting for apply...", "", "Apply result will appear here", commitSha, nil)
+				if err != nil {
+					slog.Error("Failed to create check run for apply",
+						"prNumber", prNumber,
+						"project", job.ProjectName,
+						"error", err,
+					)
+					return nil, nil, fmt.Errorf("Error setting pr status: %v", err)
+				}
 				jobCheckRunIds[job.ProjectName] = CheckRunData{
 					Id: strconv.FormatInt(*cr.ID, 10),
-					Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber, ),
+					Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber),
 				}
-			}
-			if err != nil {
-				slog.Error("Failed to set job PR status",
-					"prNumber", prNumber,
-					"project", job.ProjectName,
-					"command", command,
-					"error", err,
-				)
-				return nil, nil, fmt.Errorf("Error setting pr status: %v", err)
 			}
 		}
 	}
@@ -313,24 +320,31 @@ func SetPRCheckForJobs(ghService *github2.GithubService, prNumber int, jobs []sc
 		if scheduler.IsPlanJobs(jobs) {
 			slog.Debug("Setting aggregate plan status", "prNumber", prNumber)
 			cr, err = ghService.CreateCheckRun("digger/plan", "in_progress", "", "Pending start...", "", jobsSummaryTable, commitSha, nil)
+			if err != nil {
+				slog.Error("Failed to create aggregate check run for plan",
+					"prNumber", prNumber,
+					"error", err,
+				)
+				return nil, nil, fmt.Errorf("error setting pr status: %v", err)
+			}
 			batchCheckRunId = CheckRunData{
 				Id: strconv.FormatInt(*cr.ID, 10),
-				Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber, ),
+				Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber),
 			}
 		} else {
 			slog.Debug("Setting aggregate apply status", "prNumber", prNumber)
 			cr, err = ghService.CreateCheckRun("digger/apply", "in_progress", "", "Pending start...", "", jobsSummaryTable, commitSha, nil)
+			if err != nil {
+				slog.Error("Failed to create aggregate check run for apply",
+					"prNumber", prNumber,
+					"error", err,
+				)
+				return nil, nil, fmt.Errorf("error setting pr status: %v", err)
+			}
 			batchCheckRunId = CheckRunData{
 				Id: strconv.FormatInt(*cr.ID, 10),
-				Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber, ),
+				Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber),
 			}
-		}
-		if err != nil {
-			slog.Error("Failed to set aggregate PR status",
-				"prNumber", prNumber,
-				"error", err,
-			)
-			return nil, nil, fmt.Errorf("error setting pr status: %v", err)
 		}
 	} else {
 		slog.Debug("Setting success status for empty job list", "prNumber", prNumber)

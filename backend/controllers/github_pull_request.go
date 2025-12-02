@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/diggerhq/digger/backend/ci_backends"
 	config2 "github.com/diggerhq/digger/backend/config"
@@ -155,6 +156,17 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 				)
 				return nil
 			}
+		}
+
+
+		// Silently skip repos without digger.yml - this is expected for org-wide installations
+		if strings.Contains(err.Error(), "could not find digger.yml") ||
+			strings.Contains(err.Error(), "could not find digger.yaml") {
+			slog.Info("No Digger config found, skipping repo",
+				"prNumber", prNumber,
+				"repoFullName", repoFullName,
+			)
+			return nil
 		}
 
 		slog.Error("Error getting Digger config for PR",

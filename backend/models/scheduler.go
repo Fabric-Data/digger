@@ -228,11 +228,18 @@ func GetCheckRunStatusForJob(job *DiggerJob) (string, error) {
 		return "in_progress", nil
 	case orchestrator_scheduler.DiggerJobCreated:
 		return "in_progress", nil
+	case orchestrator_scheduler.DiggerJobQueuedForRun:
+		return "queued", nil
 	case orchestrator_scheduler.DiggerJobSucceeded:
 		return "completed", nil
 	case orchestrator_scheduler.DiggerJobFailed:
 		return "completed", nil
 	}
+	slog.Error("Unknown job status in GetCheckRunStatusForJob - this will cause GitHub API 422 error",
+		"jobId", job.DiggerJobID,
+		"jobStatus", job.Status,
+		"jobStatusInt", int(job.Status),
+		"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
 	return "", fmt.Errorf("unknown job status: %v", job.Status)
 }
 
@@ -244,10 +251,17 @@ func GetCheckRunConclusionForJob(job *DiggerJob) (string, error) {
 		return "", nil
 	case orchestrator_scheduler.DiggerJobCreated:
 		return "", nil
+	case orchestrator_scheduler.DiggerJobQueuedForRun:
+		return "", nil
 	case orchestrator_scheduler.DiggerJobSucceeded:
 		return "success", nil
 	case orchestrator_scheduler.DiggerJobFailed:
 		return "failure", nil
 	}
+	slog.Error("Unknown job status in GetCheckRunConclusionForJob - this will cause GitHub API 422 error",
+		"jobId", job.DiggerJobID,
+		"jobStatus", job.Status,
+		"jobStatusInt", int(job.Status),
+		"validStatuses", []string{"created", "triggered", "started", "queued_for_run", "succeeded", "failed"})
 	return "", fmt.Errorf("unknown job status: %v", job.Status)
 }
