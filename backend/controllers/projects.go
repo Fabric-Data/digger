@@ -761,6 +761,22 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 			)
 		}
 
+		commitSha := batch.CommitSha
+		impactedProjectDb, err := models.DB.GetImpactedProjectSingle(batch.RepoFullName, commitSha, job.ProjectName)
+		if err != nil {
+			slog.Warn("Error fetching impacted project db", "jobId", jobId, "error", err, "commitSha", commitSha, "repoFullName", batch.RepoFullName)
+		} else if impactedProjectDb == nil && err == nil {
+			slog.Warn("Impacted project entry not found in db (maybe it was not synced in event start)", "jobId", jobId, "error", err, "commitSha", commitSha, "repoFullName", batch.RepoFullName)
+		} else {
+			if batch.BatchType == orchestrator_scheduler.DiggerCommandPlan {
+				impactedProjectDb.Planned = true
+			}
+			if batch.BatchType == orchestrator_scheduler.DiggerCommandApply {
+				impactedProjectDb.Applied = true
+			}
+			models.DB.GormDB.Save(impactedProjectDb)
+		}
+
 		var prCommentId *int64
 		num, err := strconv.ParseInt(request.PrCommentId, 10, 64)
 		if err != nil {
@@ -990,7 +1006,8 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed batch"})
 		return
 	}
-	err = UpdateCheckStatusForBatch(d.GithubClientProvider, refreshedBatch)
+	//err = UpdateCheckStatusForBatch(d.GithubClientProvider, refreshedBatch)
+	err = UpdateCheckRunForBatch(d.GithubClientProvider, refreshedBatch)
 	if err != nil {
 		slog.Error("Error updating check status",
 			"batchId", batch.ID,
@@ -1010,7 +1027,8 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error getting refreshed job"})
 		return
 	}
-	err = UpdateCheckStatusForJob(d.GithubClientProvider, refreshedJob)
+	//err = UpdateCommitStatusForJob(d.GithubClientProvider, refreshedJob)
+	err = UpdateCheckRunForJob(d.GithubClientProvider, refreshedJob)
 	if err != nil {
 		slog.Error("Error updating check status",
 			"jobId", jobId,
@@ -1331,7 +1349,7 @@ func CreateTerraformOutputsSummary(gh utils.GithubClientProvider, batch *models.
 
 		summaryEndpoint := os.Getenv("DIGGER_AI_SUMMARY_ENDPOINT")
 		if summaryEndpoint == "" {
-			slog.Error("AI summary endpoint not configured", "batchId", batch.ID)
+			slog.Warn("AI summary endpoint not configured, ignorning", "batchId", batch.ID)
 			updateErr := prService.EditComment(batch.PrNumber, batch.AiSummaryCommentId,
 				":x: could not generate AI summary \n\n AI summary endpoint not configured")
 			if updateErr != nil {
@@ -1492,9 +1510,16 @@ func AutomergePRforBatchIfEnabled(gh utils.GithubClientProvider, batch *models.D
 		"batchType", batch.BatchType,
 	)
 
+	allApplied, _, err := models.DB.AllImpactedProjectApplied(batch.RepoFullName, batch.CommitSha)
+	if err != nil {
+		slog.Error("Error fetching all applied projects", "batchId", batch.ID, "error", err)
+		slog.Warn("falling back to using batch entry")
+		allApplied = batch.CoverAllImpactedProjects
+	}
+
 	if batch.Status == orchestrator_scheduler.BatchJobSucceeded &&
 		batch.BatchType == orchestrator_scheduler.DiggerCommandApply &&
-		batch.CoverAllImpactedProjects == true &&
+		allApplied &&
 		automerge == true {
 
 		slog.Info("Conditions met for auto-merge, proceeding",

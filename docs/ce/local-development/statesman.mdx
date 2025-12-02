@@ -77,5 +77,4 @@ curl -s -X POST http://localhost:8080/internal/api/users \
 - **"no such table: organizations"**: Run migrations first (see First-time setup above).
 - **Atlas checksum mismatch**: Run `atlas migrate hash --dir file://migrations/sqlite` then retry apply.
 - **403**: webhook secret mismatch (`OPENTACO_ENABLE_INTERNAL_ENDPOINTS` vs UI `STATESMAN_BACKEND_WEBHOOK_SECRET`).
-- **404/500 resolving org**: org not synced; rerun the sync script or `orgs/sync` call above.
 - **SQLite quirks**: defaults to SQLite in-process; no config needed for local. For Postgres/MySQL, set `TACO_QUERY_BACKEND` and related envs (see `docs/ce/state-management/query-backend`).

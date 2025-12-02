@@ -741,6 +741,82 @@ func (db *Database) MakeGithubAppInstallationLinkInactive(link *GithubAppInstall
 	return link, nil
 }
 
+func (db *Database) CreateImpactedProject(repoFullName string, commitSha string, projcectName string, branch *string, prNumber *int) (*ImpactedProject,error) {
+	ip := ImpactedProject{
+		ID:          uuid.New(),
+		RepoFullName: repoFullName,
+		CommitSha:    commitSha,
+		ProjectName:  projcectName,
+		Branch: branch,
+		PrNumber: prNumber,
+		Planned: false,
+		Applied: false,
+	}
+	err := db.GormDB.Create(&ip).Error
+	if err != nil {
+		slog.Error("failed to create impacted project", "error", err, "repoFullName", repoFullName, "commitSha", commitSha, "projcectName", projcectName)
+		return nil, err
+	}
+	return &ip, nil
+}
+
+func (db *Database) GetImpactedProjects(repoFullName string, commitSha string) ([]ImpactedProject, error) {
+	var impactedProjects []ImpactedProject
+	err := db.GormDB.Where("repo_full_name=? AND commit_sha = ?", repoFullName, commitSha).Find(&impactedProjects).Error
+	if err != nil {
+		slog.Error("failed to get impacted projects", "error", err, "repoFullName", repoFullName, "commitSha", commitSha)
+		return nil, err
+	}
+	return impactedProjects, nil
+}
+
+func (db *Database) GetImpactedProjectSingle(repoFullName string, commitSha string, projectName string) (*ImpactedProject, error) {
+	var impactedProject ImpactedProject
+	err := db.GormDB.Where("repo_full_name=? AND commit_sha = ?", repoFullName, commitSha).Find(&impactedProject).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		slog.Error("failed to get impacted projects", "error", err, "repoFullName", repoFullName, "commitSha", commitSha)
+		return nil, err
+	}
+	return &impactedProject, nil
+}
+
+func (db *Database) AllImpactedProjectPlanned(repoFullName string, commitSha string) (bool, []ImpactedProject, error) {
+	impactedProjects, err := db.GetImpactedProjects(repoFullName, commitSha)
+	if err != nil {
+		slog.Error("could not get impacted projects", "error", err, "repoFullName", repoFullName, "commitSha", commitSha)
+		return false, nil, err
+	}
+
+	if len(impactedProjects) == 0 {
+		return false, nil, errors.New("could not determine planned status for this project set since not all applied")
+	}
+
+	projectsNotPlanned := lo.Filter(impactedProjects, func(item ImpactedProject, _ int) bool {
+		return item.Planned == false
+	})
+	return len(projectsNotPlanned) == 0, impactedProjects, nil
+}
+
+func (db *Database) AllImpactedProjectApplied(repoFullName string, commitSha string) (bool, []ImpactedProject, error) {
+	impactedProjects, err := db.GetImpactedProjects(repoFullName, commitSha)
+	if err != nil {
+		slog.Error("could not get impacted projects", "error", err, "repoFullName", repoFullName, "commitSha", commitSha)
+		return false, nil, err
+	}
+
+	if len(impactedProjects) == 0 {
+		return false, nil, errors.New("could not determine apply status for this project set since not all applied")
+	}
+
+	projectsNotApplied := lo.Filter(impactedProjects, func(item ImpactedProject, _ int) bool {
+		return item.Applied == false
+	})
+	return len(projectsNotApplied) == 0, impactedProjects, nil
+}
+
 func (db *Database) CreateDiggerJobLink(diggerJobId string, repoFullName string) (*GithubDiggerJobLink, error) {
 	link := GithubDiggerJobLink{Status: DiggerJobLinkCreated, DiggerJobId: diggerJobId, RepoFullName: repoFullName}
 	result := db.GormDB.Save(&link)
@@ -824,10 +900,23 @@ func (db *Database) GetDiggerBatch(batchId *uuid.UUID) (*DiggerBatch, error) {
 	return batch, nil
 }
 
-func (db *Database) CreateDiggerBatch(vcsType DiggerVCSType, githubInstallationId int64, repoOwner string, repoName string, repoFullname string, PRNumber int, diggerConfig string, branchName string, batchType scheduler.DiggerCommand, commentId *int64, gitlabProjectId int, aiSummaryCommentId string, reportTerraformOutputs bool, coverAllImpactedProjects bool, VCSConnectionId *uint) (*DiggerBatch, error) {
+func (db *Database) GetDiggerBatchFromId(diggerBatchId string) (*DiggerBatch, error) {
+	batch := &DiggerBatch{}
+	result := db.GormDB.Where("digger_batch_id=? ", diggerBatchId).Find(batch)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+	}
+	return batch, nil
+}
+
+func (db *Database) CreateDiggerBatch(vcsType DiggerVCSType, githubInstallationId int64, repoOwner string, repoName string, repoFullname string, PRNumber int, diggerConfig string, branchName string, batchType scheduler.DiggerCommand, commentId *int64, gitlabProjectId int, aiSummaryCommentId string, reportTerraformOutputs bool, coverAllImpactedProjects bool, VCSConnectionId *uint, commitSha string, checkRunId *string, checkRunUrl *string) (*DiggerBatch, error) {
 	uid := uuid.New()
+	diggerBatchId := uniuri.NewLen(7)
 	batch := &DiggerBatch{
 		ID:                       uid,
+		DiggerBatchID:            diggerBatchId,
 		VCS:                      vcsType,
 		VCSConnectionId:          VCSConnectionId,
 		GithubInstallationId:     githubInstallationId,
@@ -835,7 +924,10 @@ func (db *Database) CreateDiggerBatch(vcsType DiggerVCSType, githubInstallationI
 		RepoName:                 repoName,
 		RepoFullName:             repoFullname,
 		PrNumber:                 PRNumber,
+		CommitSha:                commitSha,
 		CommentId:                commentId,
+		CheckRunId:               checkRunId,
+		CheckRunUrl:              checkRunUrl,
 		Status:                   scheduler.BatchJobCreated,
 		BranchName:               branchName,
 		DiggerConfig:             diggerConfig,
@@ -902,11 +994,11 @@ func (db *Database) UpdateBatchStatus(batch *DiggerBatch) error {
 	return nil
 }
 
-func (db *Database) CreateDiggerJob(batchId uuid.UUID, serializedJob []byte, workflowFile string) (*DiggerJob, error) {
+func (db *Database) CreateDiggerJob(batchId uuid.UUID, serializedJob []byte, workflowFile string, checkRunId *string, checkRunUrl *string, reporterType string, projectName string) (*DiggerJob, error) {
 	if serializedJob == nil || len(serializedJob) == 0 {
 		return nil, fmt.Errorf("serializedJob can't be empty")
 	}
-	jobId := uniuri.New()
+	jobId := uniuri.NewLen(10)
 	batchIdStr := batchId.String()
 
 	summary := &DiggerJobSummary{}
@@ -916,8 +1008,19 @@ func (db *Database) CreateDiggerJob(batchId uuid.UUID, serializedJob []byte, wor
 	}
 
 	workflowUrl := "#"
-	job := &DiggerJob{DiggerJobID: jobId, Status: scheduler.DiggerJobCreated,
-		BatchID: &batchIdStr, SerializedJobSpec: serializedJob, DiggerJobSummary: *summary, WorkflowRunUrl: &workflowUrl, WorkflowFile: workflowFile}
+	job := &DiggerJob{
+		DiggerJobID: jobId,
+		Status: scheduler.DiggerJobCreated,
+		ProjectName: projectName,
+		BatchID: &batchIdStr,
+		CheckRunId: checkRunId,
+		CheckRunUrl: checkRunUrl,
+		SerializedJobSpec: serializedJob,
+		DiggerJobSummary: *summary,
+		WorkflowRunUrl: &workflowUrl,
+		WorkflowFile: workflowFile,
+		ReporterType: reporterType,
+	}
 	result = db.GormDB.Save(job)
 	if result.Error != nil {
 		return nil, result.Error
