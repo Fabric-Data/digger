@@ -17,6 +17,14 @@ export function createRunRouter(
   router.post("/api/v1/sandboxes/runs", (req, res, next) => {
     try {
       const parsed = runRequestSchema.parse(req.body);
+      
+      // Debug: log received metadata including AWS region
+      console.log("Received run request metadata:", {
+        hasMetadata: !!parsed.metadata,
+        awsRegion: parsed.metadata?.AWS_REGION || "(not set)",
+        awsKeyLength: parsed.metadata?.AWS_ACCESS_KEY_ID?.length || 0,
+      });
+      
       const payload: SandboxRunPayload = {
         operation: parsed.operation,
         runId: parsed.run_id,

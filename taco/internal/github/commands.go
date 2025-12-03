@@ -85,11 +85,17 @@ func (e *CommandExecutor) Execute(ctx context.Context, req *ExecuteRequest) *Com
 
 	// 3. Load existing state if any
 	var state []byte
+	logger.Info("Looking for existing state", slog.String("unit_id", unitID))
 	if meta, err := e.unitRepo.Get(ctx, unitID); err == nil && meta != nil {
+		logger.Info("Unit found, downloading state...")
 		if stateData, err := e.store.Download(ctx, unitID); err == nil {
 			state = stateData
 			logger.Info("Loaded existing state", slog.Int("size", len(state)))
+		} else {
+			logger.Warn("Failed to download state", slog.String("error", err.Error()))
 		}
+	} else {
+		logger.Info("No existing unit/state found", slog.String("error", fmt.Sprintf("%v", err)))
 	}
 
 	// 4. Get terraform version from options or use default
@@ -140,7 +146,12 @@ func (e *CommandExecutor) Execute(ctx context.Context, req *ExecuteRequest) *Com
 		if metadata["AWS_REGION"] == "" {
 			metadata["AWS_REGION"] = "us-east-1"
 		}
-		// Don't log that credentials are present - security best practice
+		// Log that credentials are configured (not the values)
+		logger.Info("AWS credentials configured for sandbox",
+			slog.String("region", metadata["AWS_REGION"]),
+			slog.Int("key_length", len(awsKey)))
+	} else {
+		logger.Warn("AWS_ACCESS_KEY_ID not set - AWS resources will fail")
 	}
 
 	// 8. Execute based on action
@@ -151,6 +162,8 @@ func (e *CommandExecutor) Execute(ctx context.Context, req *ExecuteRequest) *Com
 		result = e.executeApply(ctx, logger, req, runID, unitID, archive, state, tfVersion, engine, workingDir, metadata, totalStart, false)
 	case "destroy":
 		result = e.executeApply(ctx, logger, req, runID, unitID, archive, state, tfVersion, engine, workingDir, metadata, totalStart, true)
+	case "benchmark":
+		result = e.executeBenchmark(ctx, logger, req, runID, unitID, archive, tfVersion, engine, workingDir, metadata, totalStart)
 	default:
 		result.Error = fmt.Sprintf("Unknown action: %s", req.Command.Action)
 	}
@@ -303,12 +316,21 @@ func (e *CommandExecutor) executeApply(
 	}
 
 	// Save the new state
+	logger.Info("Apply result received",
+		slog.Int("state_size", len(applyResult.State)),
+		slog.Int("logs_size", len(applyResult.Logs)),
+		slog.Bool("is_destroy", isDestroy))
+
 	if len(applyResult.State) > 0 && !isDestroy {
 		if err := e.saveState(ctx, unitID, applyResult.State); err != nil {
 			logger.Warn("Failed to save state", slog.String("error", err.Error()))
 		} else {
-			logger.Info("State saved", slog.Int("size", len(applyResult.State)))
+			logger.Info("State saved successfully",
+				slog.String("unit_id", unitID),
+				slog.Int("size", len(applyResult.State)))
 		}
+	} else if !isDestroy {
+		logger.Warn("No state returned from apply - state will not persist!")
 	}
 
 	// For destroy, clean up the state
@@ -334,6 +356,125 @@ func (e *CommandExecutor) executeApply(
 	result.Timing.Total = time.Since(totalStart)
 
 	logger.Info(fmt.Sprintf("%s completed", action),
+		slog.Duration("total", result.Timing.Total))
+
+	return result
+}
+
+// executeBenchmark runs apply followed by destroy in a single flow
+// This keeps state in the sandbox and ensures resources are cleaned up
+func (e *CommandExecutor) executeBenchmark(
+	ctx context.Context,
+	logger *slog.Logger,
+	req *ExecuteRequest,
+	runID, unitID string,
+	archive []byte,
+	tfVersion, engine, workingDir string,
+	metadata map[string]string,
+	totalStart time.Time,
+) *CommandResult {
+	result := &CommandResult{
+		Command: req.Command,
+		Success: false,
+	}
+
+	if e.sandbox == nil {
+		result.Error = "Sandbox provider not configured"
+		result.Timing.Total = time.Since(totalStart)
+		return result
+	}
+
+	// Generate a config version ID for the sandbox
+	configVersionID := fmt.Sprintf("cv-%s", uuid.New().String()[:8])
+
+	logger.Info("Starting benchmark: apply + destroy cycle",
+		slog.String("run_id", runID),
+		slog.String("engine", engine),
+		slog.String("version", tfVersion))
+
+	var allLogs strings.Builder
+
+	// Phase 1: Apply
+	applyStart := time.Now()
+	applyReq := &sandbox.ApplyRequest{
+		RunID:                  runID,
+		PlanID:                 uuid.New().String(),
+		OrgID:                  "github-benchmark",
+		UnitID:                 unitID,
+		ConfigurationVersionID: configVersionID,
+		IsDestroy:              false,
+		TerraformVersion:       tfVersion,
+		Engine:                 engine,
+		WorkingDirectory:       workingDir,
+		ConfigArchive:          archive,
+		State:                  nil, // Fresh apply
+		Metadata:               metadata,
+	}
+
+	applyResult, err := e.sandbox.ExecuteApply(ctx, applyReq)
+	result.Timing.Apply = time.Since(applyStart)
+
+	if err != nil {
+		result.Error = fmt.Sprintf("Apply phase failed: %v", err)
+		result.Timing.Total = time.Since(totalStart)
+		logger.Error("Benchmark apply failed", slog.String("error", err.Error()))
+		return result
+	}
+
+	allLogs.WriteString("=== APPLY PHASE ===\n")
+	allLogs.WriteString(applyResult.Logs)
+	allLogs.WriteString("\n\n")
+
+	logger.Info("Benchmark apply completed",
+		slog.Duration("duration", result.Timing.Apply),
+		slog.Int("state_size", len(applyResult.State)))
+
+	// Phase 2: Destroy (using state from apply)
+	destroyStart := time.Now()
+	destroyReq := &sandbox.ApplyRequest{
+		RunID:                  runID + "-destroy",
+		PlanID:                 uuid.New().String(),
+		OrgID:                  "github-benchmark",
+		UnitID:                 unitID,
+		ConfigurationVersionID: configVersionID,
+		IsDestroy:              true,
+		TerraformVersion:       tfVersion,
+		Engine:                 engine,
+		WorkingDirectory:       workingDir,
+		ConfigArchive:          archive,
+		State:                  applyResult.State, // Use state from apply
+		Metadata:               metadata,
+	}
+
+	destroyResult, err := e.sandbox.ExecuteApply(ctx, destroyReq)
+	result.Timing.Destroy = time.Since(destroyStart)
+
+	if err != nil {
+		result.Error = fmt.Sprintf("Destroy phase failed (resources may be orphaned!): %v", err)
+		result.Timing.Total = time.Since(totalStart)
+		logger.Error("Benchmark destroy failed", slog.String("error", err.Error()))
+		return result
+	}
+
+	allLogs.WriteString("=== DESTROY PHASE ===\n")
+	allLogs.WriteString(destroyResult.Logs)
+
+	logger.Info("Benchmark destroy completed",
+		slog.Duration("duration", result.Timing.Destroy))
+
+	// Success!
+	result.Success = true
+	result.Output = allLogs.String()
+	result.Summary = fmt.Sprintf("Apply: %.2fs | Destroy: %.2fs | Total: %.2fs",
+		result.Timing.Apply.Seconds(),
+		result.Timing.Destroy.Seconds(),
+		time.Since(totalStart).Seconds())
+
+	result.Timing.Total = time.Since(totalStart)
+
+	logger.Info("Benchmark completed successfully",
+		slog.Duration("apply", result.Timing.Apply),
+		slog.Duration("destroy", result.Timing.Destroy),
 		slog.Duration("total", result.Timing.Total))
 
 	return result

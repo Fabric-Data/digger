@@ -136,25 +136,33 @@ export class E2BSandboxRunner implements SandboxRunner {
         stderr: applyResult.stderr.slice(-500),
       }, "terraform apply output (last 500 chars)");
 
-      // Use terraform show to get state - works regardless of workspace configuration
-      // This handles both: terraform.tfstate and terraform.tfstate.d/<workspace>/terraform.tfstate
+      // Read the actual terraform.tfstate file (not terraform show -json which is different format)
+      // Check both standard location and workspace location
       let stateBase64 = "";
       
       try {
-        const showResult = await this.runTerraformCommand(
-          sandbox,
-          workDir,
-          ["show", "-json"],
-          undefined,
-          undefined,
-          metadata,
-        );
+        // Try standard location first
+        let statePath = `${workDir}/terraform.tfstate`;
+        let stateContent: string | null = null;
         
-        if (showResult.stdout && showResult.stdout.trim() !== "{}") {
-          stateBase64 = Buffer.from(showResult.stdout, "utf8").toString("base64");
-          logger.info({ stateSize: showResult.stdout.length }, "captured state via terraform show");
+        try {
+          stateContent = await sandbox.files.read(statePath);
+          logger.info({ path: statePath }, "found state file at standard location");
+        } catch {
+          // Try workspace location - find the workspace state directory
+          const lsResult = await sandbox.commands.run(`find ${workDir} -name "terraform.tfstate" -type f 2>/dev/null | head -1`);
+          const foundPath = lsResult.stdout.trim();
+          if (foundPath) {
+            stateContent = await sandbox.files.read(foundPath);
+            logger.info({ path: foundPath }, "found state file at workspace location");
+          }
+        }
+        
+        if (stateContent && stateContent.trim()) {
+          stateBase64 = Buffer.from(stateContent, "utf8").toString("base64");
+          logger.info({ stateSize: stateContent.length }, "captured terraform.tfstate file");
         } else {
-          logger.info("terraform show returned empty state");
+          logger.info("no terraform.tfstate file found");
         }
       } catch (err) {
         // State doesn't exist - this is OK for empty applies or destroys
@@ -226,6 +234,12 @@ export class E2BSandboxRunner implements SandboxRunner {
       envs.AWS_REGION = metadata.AWS_REGION || "us-east-1";
       // Also set default region for AWS SDK
       envs.AWS_DEFAULT_REGION = envs.AWS_REGION;
+      logger.info({ 
+        region: envs.AWS_REGION,
+        keyLength: envs.AWS_ACCESS_KEY_ID.length,
+      }, "AWS credentials injected into terraform environment");
+    } else {
+      logger.warn("No AWS credentials in metadata - AWS resources will fail");
     }
 
     return envs;

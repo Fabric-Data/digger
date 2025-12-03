@@ -128,6 +128,8 @@ type TimingBreakdown struct {
 	Clone   time.Duration `json:"clone"`
 	Init    time.Duration `json:"init"`
 	Execute time.Duration `json:"execute"` // plan, apply, or destroy time
+	Apply   time.Duration `json:"apply,omitempty"`   // for benchmark: apply phase
+	Destroy time.Duration `json:"destroy,omitempty"` // for benchmark: destroy phase
 	Total   time.Duration `json:"total"`
 }
 

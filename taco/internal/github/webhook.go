@@ -218,7 +218,7 @@ func ParseCommand(text string) *Command {
 
 		// Validate action
 		switch action {
-		case "plan", "apply", "destroy":
+		case "plan", "apply", "destroy", "benchmark":
 			cmd := &Command{
 				Action:  action,
 				Options: make(map[string]string),
@@ -273,6 +273,12 @@ func FormatResult(result *CommandResult) string {
 		} else {
 			sb.WriteString("## ❌ OpenTaco Destroy Failed\n\n")
 		}
+	case "benchmark":
+		if result.Success {
+			sb.WriteString("## ✅ OpenTaco Benchmark Complete\n\n")
+		} else {
+			sb.WriteString("## ❌ OpenTaco Benchmark Failed\n\n")
+		}
 	}
 
 	// Timing breakdown
@@ -282,7 +288,9 @@ func FormatResult(result *CommandResult) string {
 	if result.Timing.Clone > 0 {
 		sb.WriteString(fmt.Sprintf("| Clone | %.2fs |\n", result.Timing.Clone.Seconds()))
 	}
-	sb.WriteString(fmt.Sprintf("| Init | %.2fs |\n", result.Timing.Init.Seconds()))
+	if result.Timing.Init > 0 {
+		sb.WriteString(fmt.Sprintf("| Init | %.2fs |\n", result.Timing.Init.Seconds()))
+	}
 
 	switch result.Command.Action {
 	case "plan":
@@ -291,6 +299,9 @@ func FormatResult(result *CommandResult) string {
 		sb.WriteString(fmt.Sprintf("| Apply | %.2fs |\n", result.Timing.Execute.Seconds()))
 	case "destroy":
 		sb.WriteString(fmt.Sprintf("| Destroy | %.2fs |\n", result.Timing.Execute.Seconds()))
+	case "benchmark":
+		sb.WriteString(fmt.Sprintf("| Apply | %.2fs |\n", result.Timing.Apply.Seconds()))
+		sb.WriteString(fmt.Sprintf("| Destroy | %.2fs |\n", result.Timing.Destroy.Seconds()))
 	}
 
 	sb.WriteString("\n")
