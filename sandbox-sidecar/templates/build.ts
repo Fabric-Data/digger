@@ -5,8 +5,8 @@ import { template } from "./test-template.ts";
 async function main() {
   const buildInfo = await Template.build(template, {
     alias: "terraform-prebuilt-new",           // template name / alias
-    cpuCount: 4,
-    memoryMB: 2048,
+    cpuCount: 8,      // Max for Pro tier
+    memoryMB: 8192,   // 8GB - Max for Pro tier
     onBuildLogs: defaultBuildLogger(),
   });
 

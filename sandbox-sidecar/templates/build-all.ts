@@ -28,8 +28,8 @@ async function main() {
 
     await Template.build(buildTemplateObject(spec), {
       alias,
-      cpuCount: 2,
-      memoryMB: 4096,
+      cpuCount: 8,      // Max for Pro tier (was 2)
+      memoryMB: 8192,   // 8GB - Max for Pro tier (was 4GB)
       onBuildLogs: defaultBuildLogger(),
     });
 

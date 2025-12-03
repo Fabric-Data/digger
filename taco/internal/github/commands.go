@@ -154,6 +154,9 @@ func (e *CommandExecutor) Execute(ctx context.Context, req *ExecuteRequest) *Com
 		logger.Warn("AWS_ACCESS_KEY_ID not set - AWS resources will fail")
 	}
 
+	// Save clone timing before the switch (since result gets reassigned)
+	cloneTime := result.Timing.Clone
+
 	// 8. Execute based on action
 	switch req.Command.Action {
 	case "plan":
@@ -164,13 +167,18 @@ func (e *CommandExecutor) Execute(ctx context.Context, req *ExecuteRequest) *Com
 		result = e.executeApply(ctx, logger, req, runID, unitID, archive, state, tfVersion, engine, workingDir, metadata, totalStart, true)
 	case "benchmark":
 		result = e.executeBenchmark(ctx, logger, req, runID, unitID, archive, tfVersion, engine, workingDir, metadata, totalStart)
+		// Restore the clone time we measured before the switch
+		result.Timing.Clone = cloneTime
 	default:
 		result.Error = fmt.Sprintf("Unknown action: %s", req.Command.Action)
 	}
 
-	result.Timing.Clone = time.Since(cloneStart) - result.Timing.Init - result.Timing.Execute
-	if result.Timing.Clone < 0 {
-		result.Timing.Clone = 0
+	// For non-benchmark actions, recalculate Clone as total minus init/execute
+	if req.Command.Action != "benchmark" {
+		result.Timing.Clone = time.Since(cloneStart) - result.Timing.Init - result.Timing.Execute
+		if result.Timing.Clone < 0 {
+			result.Timing.Clone = 0
+		}
 	}
 
 	return result

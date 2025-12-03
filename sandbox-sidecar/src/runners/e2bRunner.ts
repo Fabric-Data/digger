@@ -94,7 +94,15 @@ export class E2BSandboxRunner implements SandboxRunner {
   private async runApply(job: SandboxRunRecord, appendLog?: (chunk: string) => void): Promise<RunnerOutput> {
     const requestedVersion = job.payload.terraformVersion || "1.5.7";
       const requestedEngine = job.payload.engine || "terraform";
+      const startTime = Date.now();
       const { sandbox, needsInstall } = await this.createSandbox(requestedVersion, requestedEngine);
+      
+      logger.info({ 
+        sandboxId: sandbox.sandboxId, 
+        workingDir: job.payload.workingDirectory,
+        isDestroy: job.payload.isDestroy,
+      }, "Starting apply operation");
+      
       try {
         // Install IaC tool if using fallback template
         if (needsInstall) {
@@ -110,6 +118,8 @@ export class E2BSandboxRunner implements SandboxRunner {
 
       // Run terraform init (with AWS creds if configured for benchmark)
       const metadata = job.payload.metadata;
+      
+      logger.info({ sandboxId: sandbox.sandboxId, elapsed: Date.now() - startTime }, "Starting terraform init");
       await this.runTerraformCommand(
         sandbox,
         workDir,
@@ -118,9 +128,11 @@ export class E2BSandboxRunner implements SandboxRunner {
         streamLog,
         metadata,
       );
+      logger.info({ sandboxId: sandbox.sandboxId, elapsed: Date.now() - startTime }, "Terraform init completed");
 
       // Run terraform apply/destroy
       const applyCommand = job.payload.isDestroy ? "destroy" : "apply";
+      logger.info({ sandboxId: sandbox.sandboxId, command: applyCommand, elapsed: Date.now() - startTime }, "Starting terraform apply/destroy");
       const applyResult = await this.runTerraformCommand(
         sandbox,
         workDir,
@@ -129,6 +141,7 @@ export class E2BSandboxRunner implements SandboxRunner {
         streamLog,
         metadata,
       );
+      logger.info({ sandboxId: sandbox.sandboxId, command: applyCommand, elapsed: Date.now() - startTime }, "Terraform apply/destroy completed");
 
       // Log the apply output for debugging
       logger.info({ 
@@ -173,9 +186,30 @@ export class E2BSandboxRunner implements SandboxRunner {
         state: stateBase64,
       };
 
+      logger.info({ sandboxId: sandbox.sandboxId, elapsed: Date.now() - startTime }, "Apply operation completed successfully");
       return { logs: logs.join(""), result };
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      
+      // Log detailed error info for debugging sandbox termination issues
+      logger.error({
+        sandboxId: sandbox.sandboxId,
+        elapsed,
+        elapsedSeconds: Math.round(elapsed / 1000),
+        errorMessage,
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        workingDir: job.payload.workingDirectory,
+      }, "Apply operation failed - sandbox may have been terminated");
+      
+      throw err;
     } finally {
-      await sandbox.kill();
+      try {
+        await sandbox.kill();
+      } catch (killErr) {
+        // Sandbox may already be dead, that's fine
+        logger.debug({ killErr }, "Failed to kill sandbox (may already be terminated)");
+      }
     }
   }
 
@@ -201,11 +235,19 @@ export class E2BSandboxRunner implements SandboxRunner {
       logger.warn({ templateId, engine, version }, "no pre-built template found, will install at runtime");
     }
     
-    // Extend sandbox lifetime to 30 minutes for long-running benchmarks
+    // Extend sandbox lifetime to 1 hour for long-running benchmarks (EKS, etc.)
     // Default is 5 minutes which isn't enough for large terraform applies
-    const sandboxTimeoutSeconds = 30 * 60; // 30 minutes
+    // Pro tier supports up to 24 hours, Hobby up to 1 hour
+    const sandboxTimeoutSeconds = 60 * 60; // 1 hour
     
-    logger.info({ templateId, timeoutSeconds: sandboxTimeoutSeconds }, "creating E2B sandbox");
+    // NOTE: CPU/memory are set at template BUILD time, not runtime
+    // See templates/build-all.ts for resource configuration (8 CPU, 8GB RAM)
+    
+    logger.info({ 
+      templateId, 
+      timeoutSeconds: sandboxTimeoutSeconds,
+    }, "creating E2B sandbox");
+    
     const sandbox = await Sandbox.create(templateId, {
       apiKey: this.options.apiKey,
       timeoutMs: sandboxTimeoutSeconds * 1000,
@@ -380,9 +422,18 @@ export class E2BSandboxRunner implements SandboxRunner {
       appendLog?.(chunk);
     };
 
-    // Use long timeout for benchmarks (30 minutes) - some operations like 10k resources take a while
-    // Set to 0 to disable timeout entirely if needed
-    const timeoutMs = 30 * 60 * 1000; // 30 minutes
+    // Use long timeout for benchmarks (1 hour) - EKS and large operations need this
+    // Pro tier supports up to 24 hours, Hobby up to 1 hour
+    const timeoutMs = 60 * 60 * 1000; // 1 hour
+    
+    // Explicitly extend sandbox lifetime before running long commands
+    // This ensures the sandbox won't be killed mid-operation
+    try {
+      await Sandbox.setTimeout(sandbox.sandboxId, timeoutMs, { apiKey: this.options.apiKey });
+      logger.info({ sandboxId: sandbox.sandboxId, timeoutMs }, "Extended sandbox timeout before command");
+    } catch (err) {
+      logger.warn({ err, sandboxId: sandbox.sandboxId }, "Failed to extend sandbox timeout (continuing anyway)");
+    }
     
     const result = await sandbox.commands.run(cmdStr, {
       cwd,
