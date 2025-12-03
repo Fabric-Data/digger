@@ -7,7 +7,7 @@ export interface TemplateSpec {
   tplVersion: string;      
 }
 
-export const TEMPLATE_VERSION = "0.1.3";  // bump this when recipe changes (8 CPU, 8GB RAM)
+export const TEMPLATE_VERSION = "0.1.3";  // bump this when recipe changes
 
 export const TEMPLATES: TemplateSpec[] = [
   { engine: "terraform", engineVersion: "1.0.11", tplVersion: TEMPLATE_VERSION },

@@ -235,13 +235,10 @@ export class E2BSandboxRunner implements SandboxRunner {
       logger.warn({ templateId, engine, version }, "no pre-built template found, will install at runtime");
     }
     
-    // Extend sandbox lifetime to 1 hour for long-running benchmarks (EKS, etc.)
-    // Default is 5 minutes which isn't enough for large terraform applies
-    // Pro tier supports up to 24 hours, Hobby up to 1 hour
+
     const sandboxTimeoutSeconds = 60 * 60; // 1 hour
     
-    // NOTE: CPU/memory are set at template BUILD time, not runtime
-    // See templates/build-all.ts for resource configuration (8 CPU, 8GB RAM)
+
     
     logger.info({ 
       templateId, 
