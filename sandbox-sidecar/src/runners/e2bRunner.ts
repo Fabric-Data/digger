@@ -193,11 +193,16 @@ export class E2BSandboxRunner implements SandboxRunner {
       logger.warn({ templateId, engine, version }, "no pre-built template found, will install at runtime");
     }
     
-    logger.info({ templateId }, "creating E2B sandbox");
+    // Extend sandbox lifetime to 30 minutes for long-running benchmarks
+    // Default is 5 minutes which isn't enough for large terraform applies
+    const sandboxTimeoutSeconds = 30 * 60; // 30 minutes
+    
+    logger.info({ templateId, timeoutSeconds: sandboxTimeoutSeconds }, "creating E2B sandbox");
     const sandbox = await Sandbox.create(templateId, {
       apiKey: this.options.apiKey,
+      timeoutMs: sandboxTimeoutSeconds * 1000,
     });
-    logger.info({ sandboxId: sandbox.sandboxId }, "E2B sandbox created");
+    logger.info({ sandboxId: sandbox.sandboxId }, "E2B sandbox created with extended timeout");
     
     // Store engine metadata for command execution
     (sandbox as any)._requestedEngine = engine;
@@ -361,11 +366,16 @@ export class E2BSandboxRunner implements SandboxRunner {
       appendLog?.(chunk);
     };
 
+    // Use long timeout for benchmarks (30 minutes) - some operations like 10k resources take a while
+    // Set to 0 to disable timeout entirely if needed
+    const timeoutMs = 30 * 60 * 1000; // 30 minutes
+    
     const result = await sandbox.commands.run(cmdStr, {
       cwd,
       envs: this.buildTerraformEnvs(metadata),
       onStdout: pipeChunk,
       onStderr: pipeChunk,
+      timeoutMs,
     });
 
     const stdout = result.stdout;
