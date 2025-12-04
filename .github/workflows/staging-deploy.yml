@@ -117,9 +117,6 @@ jobs:
           labels: ${{ steps.docker-meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            COMMIT_SHA=${{ github.sha }}
-            VERSION=${{ steps.tag.outputs.tag }}
 
       - name: Build and push Docker image (Standard)
         if: matrix.depot_project == ''
