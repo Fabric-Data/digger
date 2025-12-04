@@ -9,7 +9,6 @@ import (
 	"runtime/debug"
 	"slices"
 	"strconv"
-	"strings"
 
 	"github.com/diggerhq/digger/backend/ci_backends"
 	config2 "github.com/diggerhq/digger/backend/config"
