@@ -1,6 +1,9 @@
 name: Staging Deployment
 
 on:
+  push:
+    branches:
+      - introduce-monitoring
   pull_request:
     types: [opened, synchronize, reopened]
     branches: ["develop"]
