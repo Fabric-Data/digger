@@ -8,6 +8,9 @@ import { createGzip } from 'node:zlib';
 import serverHandler from './dist/server/server.js';
 import { extractUserInfoFromRequest, logRequestInit, logResponse } from './request-logging.js';
 
+// Verify logging functions are loaded
+console.log('✅ Request logging module loaded');
+
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PORT = process.env.PORT || 3030;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -74,9 +77,36 @@ const server = createServer(async (req, res) => {
   const pathname = url.pathname;
   const method = req.method;
   
+  // Debug: Log that request handler is being called
+  console.log(`[DEBUG] Request received: ${method} ${pathname} [${requestId}]`);
+  
   // Extract user ID and org ID and log request initialization
-  const { userId, orgId } = await extractUserInfoFromRequest(req);
-  logRequestInit(method, pathname, requestId, userId, orgId);
+  // Always log, even if extraction fails
+  let userId = 'anonymous';
+  let orgId = 'anonymous';
+  try {
+    const userInfo = await extractUserInfoFromRequest(req);
+    userId = userInfo.userId;
+    orgId = userInfo.orgId;
+  } catch (error) {
+    console.error(`User info extraction error [${requestId}]:`, error);
+  }
+  
+  // Always log request initialization
+  try {
+    logRequestInit(method, pathname, requestId, userId, orgId);
+  } catch (error) {
+    console.error(`Request logging error [${requestId}]:`, error);
+    // Fallback to direct console.log if logging function fails
+    console.log(JSON.stringify({
+      event: 'request_initialized',
+      method,
+      path: pathname,
+      requestId,
+      userId,
+      orgId,
+    }));
+  }
   
   // Set request timeout
   req.setTimeout(REQUEST_TIMEOUT, () => {
@@ -108,8 +138,12 @@ const server = createServer(async (req, res) => {
         });
         res.end(content);
         // Log response for static files
-        const latency = Date.now() - requestStart;
-        logResponse(method, pathname, requestId, latency, 200);
+        try {
+          const latency = Date.now() - requestStart;
+          logResponse(method, pathname, requestId, latency, 200);
+        } catch (err) {
+          console.error(`Response logging error [${requestId}]:`, err);
+        }
         return;
       } catch (err) {
         // File not found, fall through to SSR handler
@@ -234,8 +268,12 @@ const server = createServer(async (req, res) => {
     }
     
     // Log response after sending
-    const latency = Date.now() - requestStart;
-    logResponse(method, pathname, requestId, latency, res.statusCode);
+    try {
+      const latency = Date.now() - requestStart;
+      logResponse(method, pathname, requestId, latency, res.statusCode);
+    } catch (err) {
+      console.error(`Response logging error [${requestId}]:`, err);
+    }
   } catch (error) {
     console.error(`Server error [${requestId}]:`, error);
     if (!res.headersSent) {
@@ -244,8 +282,12 @@ const server = createServer(async (req, res) => {
       res.end('Internal Server Error');
     }
     // Log error response
-    const latency = Date.now() - requestStart;
-    logResponse(method, pathname, requestId, latency, res.statusCode || 500);
+    try {
+      const latency = Date.now() - requestStart;
+      logResponse(method, pathname, requestId, latency, res.statusCode || 500);
+    } catch (err) {
+      console.error(`Error response logging error [${requestId}]:`, err);
+    }
   }
 });
 
