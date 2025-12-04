@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { createGzip } from 'node:zlib';
 import serverHandler from './dist/server/server.js';
+import { extractUserInfoFromRequest, logRequestInit, logResponse } from './request-logging.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PORT = process.env.PORT || 3030;
@@ -68,6 +69,15 @@ const server = createServer(async (req, res) => {
   const requestId = req.headers['x-request-id'] || `ssr-${Math.random().toString(36).slice(2, 10)}`;
   const requestStart = Date.now();
   
+  // Parse URL early for logging
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = url.pathname;
+  const method = req.method;
+  
+  // Extract user ID and org ID and log request initialization
+  const { userId, orgId } = await extractUserInfoFromRequest(req);
+  logRequestInit(method, pathname, requestId, userId, orgId);
+  
   // Set request timeout
   req.setTimeout(REQUEST_TIMEOUT, () => {
     console.error(`⏱️  Request timeout (${REQUEST_TIMEOUT}ms): ${req.method} ${req.url} [${requestId}]`);
@@ -78,8 +88,6 @@ const server = createServer(async (req, res) => {
   });
   
   try {
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const pathname = url.pathname;
 
     // Try to serve static files from dist/client first
     // Serve: /assets/*, *.js, *.css, *.json, images, fonts, favicons
@@ -99,6 +107,9 @@ const server = createServer(async (req, res) => {
           'Cache-Control': 'public, max-age=31536000, immutable',
         });
         res.end(content);
+        // Log response for static files
+        const latency = Date.now() - requestStart;
+        logResponse(method, pathname, requestId, latency, 200);
         return;
       } catch (err) {
         // File not found, fall through to SSR handler
@@ -221,6 +232,10 @@ const server = createServer(async (req, res) => {
     } else {
       res.end();
     }
+    
+    // Log response after sending
+    const latency = Date.now() - requestStart;
+    logResponse(method, pathname, requestId, latency, res.statusCode);
   } catch (error) {
     console.error(`Server error [${requestId}]:`, error);
     if (!res.headersSent) {
@@ -228,6 +243,9 @@ const server = createServer(async (req, res) => {
       res.setHeader('Content-Type', 'text/plain');
       res.end('Internal Server Error');
     }
+    // Log error response
+    const latency = Date.now() - requestStart;
+    logResponse(method, pathname, requestId, latency, res.statusCode || 500);
   }
 });
 
