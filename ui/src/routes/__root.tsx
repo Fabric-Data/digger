@@ -3,7 +3,7 @@ import workosWidgetsCssUrl from '@workos-inc/widgets/styles.css?url';
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { getAuth, getOrganisationDetails, getSignInUrl } from '@/authkit/serverFunctions';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import globalCssUrl from '@/styles/global.css?url';
 import { Toaster } from '@/components/ui/toaster';
 import { getPublicServerConfig } from '@/lib/env.server';
@@ -60,6 +60,11 @@ export const Route = createRootRoute({
 
 function DashboardRootComponent() {
   const data = (Route as any).useLoaderData?.() || {};
+  
+  useEffect(() => {
+    console.log('🚀 Test deployment log: UI application loaded successfully!');
+  }, []);
+  
   return (
     <DashboardRootDocument publicServerConfig={data.publicServerConfig}>
       <Outlet />
