@@ -177,9 +177,9 @@ const server = createServer(async (req, res) => {
     
     // Log slow SSR requests
     if (ssrTime > 2000) {
-      console.log(`🔥 VERY SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
+      console.debug(`🔥 VERY SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
     } else if (ssrTime > 1000) {
-      console.log(`⚠️  SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
+      console.debug(`⚠️  SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
     }
 
     // Convert Web Standard Response to Node.js response
