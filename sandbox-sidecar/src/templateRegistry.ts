@@ -8,7 +8,8 @@ export interface TemplateInfo {
 }
 
 // Template version - bump this when the build recipe changes
-const TEMPLATE_VERSION = "0.1.3";
+// 0.2.2: Pre-extracted providers with -plugin-dir (no extraction at runtime)
+const TEMPLATE_VERSION = "0.2.2";
 
 // Generate alias matching the build system
 function aliasFor(engine: string, version: string, tplVersion: string): string {

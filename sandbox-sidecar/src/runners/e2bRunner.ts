@@ -48,18 +48,21 @@ export class E2BSandboxRunner implements SandboxRunner {
       };
 
       // Run terraform init (with AWS creds if configured for benchmark)
+      // -plugin-dir points to pre-extracted providers from template build (instant, no download)
       const metadata = job.payload.metadata;
       await this.runTerraformCommand(
         sandbox,
         workDir,
-        ["init", "-input=false", "-no-color"],
+        ["init", "-input=false", "-no-color", "-plugin-dir=/usr/share/terraform/providers"],
         logs,
         streamLog,
         metadata,
       );
 
       // Run terraform plan
-      const planArgs = ["plan", "-input=false", "-no-color", "-out=tfplan.binary"];
+      // Use higher parallelism for faster execution (default is 10)
+      // 30 is a good balance: faster than default, but unlikely to hit AWS rate limits
+      const planArgs = ["plan", "-input=false", "-no-color", "-out=tfplan.binary", "-parallelism=30"];
       if (job.payload.isDestroy) {
         planArgs.splice(1, 0, "-destroy");
       }
@@ -117,13 +120,14 @@ export class E2BSandboxRunner implements SandboxRunner {
         };
 
       // Run terraform init (with AWS creds if configured for benchmark)
+      // -plugin-dir points to pre-extracted providers from template build (instant, no download)
       const metadata = job.payload.metadata;
       
       logger.info({ sandboxId: sandbox.sandboxId, elapsed: Date.now() - startTime }, "Starting terraform init");
       await this.runTerraformCommand(
         sandbox,
         workDir,
-        ["init", "-input=false", "-no-color"],
+        ["init", "-input=false", "-no-color", "-plugin-dir=/usr/share/terraform/providers"],
         logs,
         streamLog,
         metadata,
@@ -131,12 +135,14 @@ export class E2BSandboxRunner implements SandboxRunner {
       logger.info({ sandboxId: sandbox.sandboxId, elapsed: Date.now() - startTime }, "Terraform init completed");
 
       // Run terraform apply/destroy
+      // Use higher parallelism for faster execution (default is 10)
+      // 30 is a good balance: faster than default, but unlikely to hit AWS rate limits
       const applyCommand = job.payload.isDestroy ? "destroy" : "apply";
       logger.info({ sandboxId: sandbox.sandboxId, command: applyCommand, elapsed: Date.now() - startTime }, "Starting terraform apply/destroy");
       const applyResult = await this.runTerraformCommand(
         sandbox,
         workDir,
-        [applyCommand, "-auto-approve", "-input=false", "-no-color"],
+        [applyCommand, "-auto-approve", "-input=false", "-no-color", "-parallelism=30"],
         logs,
         streamLog,
         metadata,
@@ -346,20 +352,6 @@ export class E2BSandboxRunner implements SandboxRunner {
     // Use gunzip + tar separately for better compatibility across tar versions
     await sandbox.commands.run(`cd ${workDir} && gunzip -c bundle.tar.gz | tar -x --exclude='terraform.tfstate' --exclude='terraform.tfstate.backup'`);
 
-    // Debug: List extracted files to understand archive structure
-    const listResult = await sandbox.commands.run(`find ${workDir} -type f -name "*.tf" | head -20`);
-    logger.info({ 
-      tfFiles: listResult.stdout.trim().split('\n').filter(Boolean),
-      workDir,
-      workingDirectory: job.payload.workingDirectory || '(none)'
-    }, "extracted terraform files");
-
-    // Also list all files for debugging
-    const allFilesResult = await sandbox.commands.run(`ls -la ${workDir}`);
-    logger.info({ 
-      files: allFilesResult.stdout
-    }, "workspace directory listing");
-
     // Determine the execution directory
     const execDir = job.payload.workingDirectory
       ? `${workDir}/${job.payload.workingDirectory}`
@@ -410,13 +402,44 @@ export class E2BSandboxRunner implements SandboxRunner {
     logger.info({ cmd: cmdStr, cwd, engine }, "running IaC command in E2B sandbox");
 
     let sawStream = false;
+    
+    // Batch log chunks to reduce callback frequency
+    // This significantly improves performance for large outputs (10k+ resources)
+    let pendingChunks: string[] = [];
+    let flushTimeout: ReturnType<typeof setTimeout> | null = null;
+    const FLUSH_INTERVAL_MS = 100; // Flush every 100ms
+    const FLUSH_SIZE_BYTES = 4096; // Or when buffer reaches 4KB
+    
+    const flushPending = () => {
+      if (pendingChunks.length === 0) return;
+      const batch = pendingChunks.join("");
+      pendingChunks = [];
+      if (logBuffer) {
+        logBuffer.push(batch);
+      }
+      appendLog?.(batch);
+    };
+    
     const pipeChunk = (chunk: string | undefined) => {
       if (!chunk) return;
       sawStream = true;
-      if (logBuffer) {
-        logBuffer.push(chunk);
+      pendingChunks.push(chunk);
+      
+      // Flush if buffer is large enough
+      const totalSize = pendingChunks.reduce((sum, c) => sum + c.length, 0);
+      if (totalSize >= FLUSH_SIZE_BYTES) {
+        if (flushTimeout) {
+          clearTimeout(flushTimeout);
+          flushTimeout = null;
+        }
+        flushPending();
+      } else if (!flushTimeout) {
+        // Schedule a flush if not already pending
+        flushTimeout = setTimeout(() => {
+          flushTimeout = null;
+          flushPending();
+        }, FLUSH_INTERVAL_MS);
       }
-      appendLog?.(chunk);
     };
 
     // Use long timeout for benchmarks (1 hour) - EKS and large operations need this
@@ -440,6 +463,13 @@ export class E2BSandboxRunner implements SandboxRunner {
       timeoutMs,
     });
 
+    // Clear any pending flush timeout and flush remaining chunks
+    if (flushTimeout) {
+      clearTimeout(flushTimeout);
+      flushTimeout = null;
+    }
+    flushPending();
+
     const stdout = result.stdout;
     const stderr = result.stderr;
     const exitCode = result.exitCode;
@@ -447,7 +477,10 @@ export class E2BSandboxRunner implements SandboxRunner {
     // Push any remaining buffered output for completeness in final log
     const mergedLogs = `${stdout}\n${stderr}`.trim();
     if (!sawStream && mergedLogs.length > 0) {
-      pipeChunk(mergedLogs + "\n");
+      if (logBuffer) {
+        logBuffer.push(mergedLogs + "\n");
+      }
+      appendLog?.(mergedLogs + "\n");
     }
     if (exitCode !== 0) {
       throw new Error(

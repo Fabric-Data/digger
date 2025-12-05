@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export type RunnerType = "e2b";
+export type RunnerType = "e2b" | "docker";
 
 export interface AppConfig {
   port: number;
@@ -10,6 +10,10 @@ export interface AppConfig {
   e2b: {
     apiKey?: string;
     bareBonesTemplateId?: string; // Base template for custom versions
+  };
+  docker: {
+    image?: string; // Custom Docker image (default: hashicorp/terraform:<version>)
+    terraformVersion?: string; // Default TF version if not specified in job
   };
 }
 
@@ -27,16 +31,20 @@ const parsePort = (value: string | undefined, fallback: number) => {
 export function loadConfig(): AppConfig {
   const runnerEnv = (process.env.SANDBOX_RUNNER || "e2b").toLowerCase();
   
-  if (runnerEnv !== "e2b") {
-    throw new Error("Only E2B runner is supported. Set SANDBOX_RUNNER=e2b");
+  if (runnerEnv !== "e2b" && runnerEnv !== "docker") {
+    throw new Error("Unsupported runner. Set SANDBOX_RUNNER=e2b or SANDBOX_RUNNER=docker");
   }
 
   return {
     port: parsePort(process.env.PORT, 9100),
-    runner: "e2b",
+    runner: runnerEnv as RunnerType,
     e2b: {
       apiKey: process.env.E2B_API_KEY,
       bareBonesTemplateId: process.env.E2B_BAREBONES_TEMPLATE_ID,
+    },
+    docker: {
+      image: process.env.DOCKER_TERRAFORM_IMAGE,
+      terraformVersion: process.env.DOCKER_TERRAFORM_VERSION || "1.5.7",
     },
   };
 }

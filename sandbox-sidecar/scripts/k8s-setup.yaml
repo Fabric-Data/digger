@@ -1,0 +1,82 @@
+# k8s-setup.yaml
+# Setup namespace and resources for testing OpenTaco runners on K8s
+#
+# Apply with:
+#   kubectl apply -f k8s-setup.yaml
+#
+# Delete with:
+#   kubectl delete -f k8s-setup.yaml
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: otaco-runners
+  labels:
+    app: otaco-runner
+    purpose: benchmark
+
+---
+# ServiceAccount for the runner jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otaco-runner
+  namespace: otaco-runners
+
+---
+# Role with minimal permissions (just needs to run containers)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: otaco-runner-role
+  namespace: otaco-runners
+rules: []  # No special permissions needed for running terraform
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: otaco-runner-binding
+  namespace: otaco-runners
+subjects:
+  - kind: ServiceAccount
+    name: otaco-runner
+    namespace: otaco-runners
+roleRef:
+  kind: Role
+  name: otaco-runner-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Optional: ResourceQuota to limit resource usage (2 jobs max)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: otaco-runner-quota
+  namespace: otaco-runners
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "16Gi"
+    limits.cpu: "16"
+    limits.memory: "16Gi"
+    pods: "2"
+
+---
+# Optional: LimitRange for default resource limits
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: otaco-runner-limits
+  namespace: otaco-runners
+spec:
+  limits:
+    - default:
+        cpu: "4"
+        memory: "4Gi"
+      defaultRequest:
+        cpu: "4"
+        memory: "4Gi"
+      type: Container
+
