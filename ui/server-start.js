@@ -15,6 +15,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PORT = process.env.PORT || 3030;
 const HOST = process.env.HOST || '0.0.0.0';
 const REQUEST_TIMEOUT = 60 * 1000; // 60s timeout for requests
+const COMMIT_SHA = process.env.COMMIT_SHA || 'unknown';
 
 // Configure global fetch with connection pooling for much better performance
 // Without this, every fetch creates a new TCP connection (DNS + handshake overhead)
@@ -110,7 +111,7 @@ const server = createServer(async (req, res) => {
   
   // Set request timeout
   req.setTimeout(REQUEST_TIMEOUT, () => {
-    console.error(`⏱️  Request timeout (${REQUEST_TIMEOUT}ms): ${req.method} ${req.url} [${requestId}]`);
+    console.error(`⏱️  Request timeout (${REQUEST_TIMEOUT}ms): ${req.method} ${req.url} [${requestId}] [commitSha: ${COMMIT_SHA}]`);
     if (!res.headersSent) {
       res.writeHead(408, { 'Content-Type': 'text/plain' });
       res.end('Request Timeout');
@@ -140,7 +141,7 @@ const server = createServer(async (req, res) => {
         // Log response for static files
         try {
           const latency = Date.now() - requestStart;
-          logResponse(method, pathname, requestId, latency, 200);
+          logResponse(method, pathname, requestId, latency, 200, COMMIT_SHA);
         } catch (err) {
           console.error(`Response logging error [${requestId}]:`, err);
         }
@@ -177,9 +178,9 @@ const server = createServer(async (req, res) => {
     
     // Log slow SSR requests
     if (ssrTime > 2000) {
-      console.debug(`🔥 VERY SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
+      console.debug(`🔥 VERY SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}] [commitSha: ${COMMIT_SHA}]`);
     } else if (ssrTime > 1000) {
-      console.debug(`⚠️  SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}]`);
+      console.debug(`⚠️  SLOW SSR: ${req.method} ${pathname} took ${ssrTime}ms [${requestId}] [commitSha: ${COMMIT_SHA}]`);
     }
 
     // Convert Web Standard Response to Node.js response
@@ -270,7 +271,7 @@ const server = createServer(async (req, res) => {
     // Log response after sending
     try {
       const latency = Date.now() - requestStart;
-      logResponse(method, pathname, requestId, latency, res.statusCode);
+      logResponse(method, pathname, requestId, latency, res.statusCode, COMMIT_SHA);
     } catch (err) {
       console.error(`Response logging error [${requestId}]:`, err);
     }
@@ -284,7 +285,7 @@ const server = createServer(async (req, res) => {
     // Log error response
     try {
       const latency = Date.now() - requestStart;
-      logResponse(method, pathname, requestId, latency, res.statusCode || 500);
+      logResponse(method, pathname, requestId, latency, res.statusCode || 500, COMMIT_SHA);
     } catch (err) {
       console.error(`Error response logging error [${requestId}]:`, err);
     }
