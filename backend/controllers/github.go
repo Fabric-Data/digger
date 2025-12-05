@@ -66,20 +66,20 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 			"installationId", *event.Installation.ID,
 		)
 
-		if *event.Action == "deleted" {
-			err := handleInstallationDeletedEvent(event, appId64)
-			if err != nil {
-				slog.Error("Failed to handle installation deleted event", "error", err)
-				c.String(http.StatusAccepted, "Failed to handle webhook event.")
-				return
+		// Run in goroutine to avoid webhook timeouts for large installations
+		go func(ctx context.Context) {
+			defer logging.InheritRequestLogger(ctx)()
+			if *event.Action == "deleted" {
+				if err := handleInstallationDeletedEvent(event, appId64); err != nil {
+					slog.Error("Failed to handle installation deleted event", "error", err)
+				}
+			} else if *event.Action == "created" || *event.Action == "unsuspended" || *event.Action == "new_permissions_accepted" {
+				// Use background context so work continues after HTTP response
+				if err := handleInstallationUpsertEvent(context.Background(), gh, event, appId64); err != nil {
+					slog.Error("Failed to handle installation upsert event", "error", err)
+				}
 			}
-		} else if *event.Action == "created" || *event.Action == "unsuspended" || *event.Action == "new_permissions_accepted" {
-			if err := handleInstallationUpsertEvent(c.Request.Context(), gh, event, appId64); err != nil {
-				slog.Error("Failed to handle installation upsert event", "error", err)
-				c.String(http.StatusAccepted, "Failed to handle webhook event.")
-				return
-			}
-		}
+		}(c.Request.Context())
 	case *github.InstallationRepositoriesEvent:
 		slog.Info("Processing InstallationRepositoriesEvent",
 			"action", event.GetAction(),
