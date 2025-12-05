@@ -2,6 +2,11 @@ package controllers
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
+	"reflect"
+	"strconv"
+
 	"github.com/diggerhq/digger/backend/ci_backends"
 	"github.com/diggerhq/digger/backend/logging"
 	"github.com/diggerhq/digger/backend/middleware"
@@ -9,10 +14,6 @@ import (
 	"github.com/diggerhq/digger/backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/v61/github"
-	"log/slog"
-	"net/http"
-	"reflect"
-	"strconv"
 )
 
 type IssueCommentHook func(gh utils.GithubClientProvider, payload *github.IssueCommentEvent, ciBackendProvider ci_backends.CiBackendProvider) error
@@ -78,8 +79,13 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 					slog.Error("Failed to handle installation upsert event", "error", err)
 				}
 			}
-		}(c.Request.Context())
-
+		} else if *event.Action == "created" || *event.Action == "unsuspended" || *event.Action == "new_permissions_accepted" {
+			if err := handleInstallationUpsertEvent(c.Request.Context(), gh, event, appId64); err != nil {
+				slog.Error("Failed to handle installation upsert event", "error", err)
+				c.String(http.StatusAccepted, "Failed to handle webhook event.")
+				return
+			}
+		}
 	case *github.InstallationRepositoriesEvent:
 		slog.Info("Processing InstallationRepositoriesEvent",
 			"action", event.GetAction(),
@@ -87,15 +93,11 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 			"added", len(event.RepositoriesAdded),
 			"removed", len(event.RepositoriesRemoved),
 		)
-
-		// Run in goroutine to avoid webhook timeouts for large installations
-		go func(ctx context.Context) {
-			defer logging.InheritRequestLogger(ctx)()
-			// Use background context so work continues after HTTP response
-			if err := handleInstallationRepositoriesEvent(context.Background(), gh, event, appId64); err != nil {
-				slog.Error("Failed to handle installation repositories event", "error", err)
-			}
-		}(c.Request.Context())
+		if err := handleInstallationRepositoriesEvent(c.Request.Context(), gh, event, appId64); err != nil {
+			slog.Error("Failed to handle installation repositories event", "error", err)
+			c.String(http.StatusAccepted, "Failed to handle webhook event.")
+			return
+		}
 	case *github.PushEvent:
 		slog.Info("Processing PushEvent",
 			"repo", *event.Repo.FullName,
@@ -137,6 +139,31 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 			handlePullRequestEvent(gh, event, d.CiBackendProvider, appId64)
 		}(c.Request.Context())
 
+	case *github.CheckRunEvent:
+		slog.Info("Processing CheckRunEvent",
+			"action", event.GetAction(),
+			"checkRunID", event.GetCheckRun().GetID(),
+		)
+
+		// Only care about button clicks:
+		if event.GetAction() != "requested_action" {
+			// e.g. "created", "completed", etc. – ignore for now
+			return
+		}
+
+		ra := event.GetRequestedAction()
+		if ra == nil {
+			slog.Warn("requested_action is nil in CheckRunEvent")
+			return
+		}
+
+		identifier := ra.Identifier
+		// run it as a goroutine to avoid timeouts
+		go func(ctx context.Context) {
+			defer logging.InheritRequestLogger(ctx)()
+			handleCheckRunActionEvent(gh, identifier, event, d.CiBackendProvider, appId64)
+		}(c.Request.Context())
+		slog.Info("Processing CheckRun requested_action", "identifier", identifier)
 	default:
 		slog.Debug("Unhandled event type", "eventType", reflect.TypeOf(event))
 	}

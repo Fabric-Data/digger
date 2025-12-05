@@ -29,7 +29,7 @@ jobs:
             context: .
             depot_project: kcld4zgwzx
             runner: ubuntu-latest
-
+          
           # Drift
           - service: drift
             image_name: ${{ github.repository }}/drift
@@ -37,7 +37,7 @@ jobs:
             context: .
             depot_project: f11hp4hlmg
             runner: ubuntu-latest
-
+          
           # Projects Refresh
           - service: projects-refresh
             image_name: ${{ github.repository }}/projects-refresh-service
@@ -45,7 +45,7 @@ jobs:
             context: .
             depot_project: "p9zgmm1k3n"
             runner: ubuntu-latest
-
+          
           # UI
           - service: ui
             image_name: ${{ github.repository }}/taco-ui
@@ -53,7 +53,7 @@ jobs:
             context: .
             depot_project: n4w66j9g6t
             runner: ubuntu-larger
-
+          
           # Taco Statesman
           - service: taco-statesman
             image_name: ${{ github.repository }}/taco-statesman
@@ -61,7 +61,7 @@ jobs:
             context: ./taco
             depot_project: q63j2g84tp
             runner: ubuntu-latest
-
+          
           # Taco Token Service
           - service: taco-token-service
             image_name: ${{ github.repository }}/taco-token-service
@@ -105,7 +105,7 @@ jobs:
       - name: Setup Depot
         if: matrix.depot_project != ''
         uses: depot/setup-action@v1
-
+      
       - name: Build and push Docker image (Depot)
         if: matrix.depot_project != ''
         uses: depot/build-push-action@v1
@@ -163,12 +163,12 @@ jobs:
           repository: diggerhq/opentaco-helm-charts
           token: ${{ secrets.HELM_CHARTS_PAT }}
           ref: main
-
+      
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-
+      
       - name: Update values-staging.yaml
         run: |
           STAGING_TAG="${{ steps.tag.outputs.tag }}"
@@ -196,7 +196,7 @@ jobs:
           yq eval ".taco-ui.ui.image.tag" "$VALUES_FILE"
           yq eval ".taco-statesman.taco.image.tag" "$VALUES_FILE"
           yq eval ".taco-token-service.tokenService.image.tag" "$VALUES_FILE"
-
+      
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
@@ -264,3 +264,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Helm Chart Updated ✅" >> $GITHUB_STEP_SUMMARY
           echo "The helm chart \`values-staging.yaml\` has been automatically updated in the [opentaco-helm-charts](https://github.com/diggerhq/opentaco-helm-charts) repository with tag \`${STAGING_TAG}\`." >> $GITHUB_STEP_SUMMARY
+
