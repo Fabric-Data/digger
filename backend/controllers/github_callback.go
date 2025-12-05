@@ -31,6 +31,10 @@ func (d DiggerController) GithubAppCallbackPage(c *gin.Context) {
 	code := ""
 	if codeExists && len(codeParams) > 0 && len(codeParams[0]) > 0 {
 		code = codeParams[0]
+	} else {
+		slog.Debug("No code parameter found, probably a setup update, going to return success since we are relying on webhooks now")
+		c.HTML(http.StatusOK, "github_success.tmpl", gin.H{})
+		return
 	}
 
 	appId := c.Request.URL.Query().Get("state")

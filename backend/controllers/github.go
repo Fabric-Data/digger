@@ -87,11 +87,15 @@ func (d DiggerController) GithubAppWebHook(c *gin.Context) {
 			"added", len(event.RepositoriesAdded),
 			"removed", len(event.RepositoriesRemoved),
 		)
-		if err := handleInstallationRepositoriesEvent(c.Request.Context(), gh, event, appId64); err != nil {
-			slog.Error("Failed to handle installation repositories event", "error", err)
-			c.String(http.StatusAccepted, "Failed to handle webhook event.")
-			return
-		}
+
+		// Run in goroutine to avoid webhook timeouts for large installations
+		go func(ctx context.Context) {
+			defer logging.InheritRequestLogger(ctx)()
+			// Use background context so work continues after HTTP response
+			if err := handleInstallationRepositoriesEvent(context.Background(), gh, event, appId64); err != nil {
+				slog.Error("Failed to handle installation repositories event", "error", err)
+			}
+		}(c.Request.Context())
 	case *github.PushEvent:
 		slog.Info("Processing PushEvent",
 			"repo", *event.Repo.FullName,

@@ -1,5 +1,5 @@
 ---
-title: Orchestrator local setup
+title: Backend (orchestrator) local setup
 ---
 
 The backend serves orchestration APIs, GitHub app endpoints, and internal APIs the UI relies on.
@@ -51,7 +51,7 @@ The backend serves orchestration APIs, GitHub app endpoints, and internal APIs t
 
 ## GitHub app integration
 
-- For a quick install link, set `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local` to your app's install URL (`https://github.com/apps/<app>/installations/new`).
+- For a quick install link, set `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local` to your app’s install URL (`https://github.com/apps/<app>/installations/new`).
 - To create a new app via the backend, open `http://localhost:3000/github/setup` (requires `HOSTNAME` set to a reachable URL for callbacks).
 
 ## Troubleshooting
