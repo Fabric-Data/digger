@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/diggerhq/digger/backend/ci_backends"
 	config2 "github.com/diggerhq/digger/backend/config"
@@ -320,6 +321,12 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 			"projectCount", len(impactedProjects),
 			"command", *diggerCommand,
 		)
+
+		// Sort projects by name to ensure consistent lock ordering across PRs
+		// This prevents deadlocks when multiple PRs affect the same projects
+		slices.SortFunc(impactedProjects, func(a, b digger_config.Project) int {
+			return strings.Compare(a.Name, b.Name)
+		})
 
 		for _, project := range impactedProjects {
 			prLock := locking.PullRequestLock{

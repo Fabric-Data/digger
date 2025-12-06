@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import "dotenv/config";
 import { Template, defaultBuildLogger } from "e2b";
 import { terraformTemplate } from "./terraform-template.ts";

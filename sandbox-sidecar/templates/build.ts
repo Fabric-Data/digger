@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // build.ts
 import { Template, defaultBuildLogger } from "e2b";
 import { template } from "./test-template.ts";
