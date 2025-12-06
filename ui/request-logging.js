@@ -61,7 +61,7 @@ export function logRequestInit(method, path, requestId, userId, orgId) {
   }));
 }
 
-export function logResponse(method, path, requestId, latency, statusCode) {
+export function logResponse(method, path, requestId, latency, statusCode, commitSha) {
   console.log(JSON.stringify({
     event: 'response_sent',
     method,
@@ -69,6 +69,7 @@ export function logResponse(method, path, requestId, latency, statusCode) {
     requestId,
     latency,
     statusCode,
+    commitSha: commitSha || 'unknown',
   }));
 }
 
