@@ -423,7 +423,10 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
 		"project", projectname,
-		"requestedBy", requestedBy)
+		"requestedBy", requestedBy,
+		"teams", teams,
+		"approvals", approvals,
+	)
 
 	policy, err := p.PolicyProvider.GetPlanPolicy(SCMOrganisation, SCMrepository, projectname, projectDir)
 	if err != nil {
