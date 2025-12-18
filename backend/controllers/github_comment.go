@@ -522,6 +522,17 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		impactedProjectsMap[p.Name] = p
 	}
 
+	// Compute teams, approvals, and approval_teams for policy evaluation
+	err = populatePolicyFieldsForJobs(ghService, ghService, jobs, repoOwner, issueNumber)
+	if err != nil {
+		slog.Error("Error populating policy fields for jobs",
+			"issueNumber", issueNumber,
+			"error", err,
+		)
+		// Don't fail the entire process, just log the error
+		// The CLI will use empty values if these aren't populated
+	}
+
 	impactedProjectsJobMap := make(map[string]scheduler.Job)
 	for _, j := range jobs {
 		impactedProjectsJobMap[j.ProjectName] = j

@@ -3,11 +3,11 @@ package policy
 type MockPolicyChecker struct {
 }
 
-func (t MockPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, planPolicyViolations []string) (bool, error) {
+func (t MockPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string) (bool, error) {
 	return false, nil
 }
 
-func (t MockPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
+func (t MockPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, approvalTeams []string, planOutput string) (bool, []string, error) {
 	return false, nil, nil
 }
 

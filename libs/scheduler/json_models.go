@@ -51,6 +51,10 @@ type JobJson struct {
 	CommandRoleArn          string            `json:"command_role_arn"`
 	StateRoleArn            string            `json:"state_role_arn"`
 	CognitoOidcConfig       *cognitoConfig    `json:"aws_cognito_oidc"`
+	// Policy-related fields computed on backend/webhook side
+	Teams         []string `json:"teams"`
+	Approvals     []string `json:"approvals"`
+	ApprovalTeams []string `json:"approval_teams"`
 }
 
 func (j *JobJson) IsPlan() bool {
@@ -107,6 +111,9 @@ func JobToJson(job Job, jobType DiggerCommand, organisationName string, branch s
 		CommandRoleArn:          job.CommandRoleArn,
 		StateRoleArn:            job.StateRoleArn,
 		CognitoOidcConfig:       job.CognitoOidcConfig,
+		Teams:                   job.Teams,
+		Approvals:               job.Approvals,
+		ApprovalTeams:           job.ApprovalTeams,
 	}
 }
 
@@ -135,6 +142,9 @@ func JsonToJob(jobJson JobJson) Job {
 		StateRoleArn:       jobJson.StateRoleArn,
 		SkipMergeCheck:     jobJson.SkipMergeCheck,
 		CognitoOidcConfig:  jobJson.CognitoOidcConfig,
+		Teams:              jobJson.Teams,
+		Approvals:          jobJson.Approvals,
+		ApprovalTeams:      jobJson.ApprovalTeams,
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/diggerhq/digger/libs/digger_config"
 	"github.com/diggerhq/digger/libs/digger_config/terragrunt/tac"
 	"github.com/diggerhq/digger/libs/git_utils"
+	"github.com/diggerhq/digger/libs/scheduler"
 	"github.com/dominikbraun/graph"
 	"github.com/google/go-github/v61/github"
 	"github.com/google/uuid"
@@ -972,4 +973,82 @@ generate_projects:
 
 	slog.Info("Created Digger repo", "repoId", repo.ID, "diggerRepoName", diggerRepoName)
 	return repo, org, nil
+}
+
+// populatePolicyFieldsForJobs computes teams, approvals, and approval_teams for all jobs
+// These values are computed on the backend/webhook side and passed through to the CLI
+func populatePolicyFieldsForJobs(ghService *github2.GithubService, orgService ci.OrgService, jobs []scheduler.Job, repoOwner string, prNumber int) error {
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	// All jobs are from the same user and PR, so compute once
+	firstJob := jobs[0]
+	requestedBy := firstJob.RequestedBy
+
+	slog.Debug("Computing policy fields for jobs",
+		"requestedBy", requestedBy,
+		"prNumber", prNumber,
+		"jobCount", len(jobs),
+	)
+
+	// Compute user teams
+	teams, err := orgService.GetUserTeams(repoOwner, requestedBy)
+	if err != nil {
+		slog.Warn("Failed to get user teams, using empty list",
+			"requestedBy", requestedBy,
+			"repoOwner", repoOwner,
+			"error", err,
+		)
+		teams = []string{}
+	}
+
+	// Compute PR approvals
+	approvals, err := ghService.GetApprovals(prNumber)
+	if err != nil {
+		slog.Warn("Failed to get PR approvals, using empty list",
+			"prNumber", prNumber,
+			"error", err,
+		)
+		approvals = []string{}
+	}
+
+	// Compute approval teams (teams that approvers belong to)
+	approvalTeamsSet := make(map[string]bool)
+	for _, approver := range approvals {
+		approverTeams, err := orgService.GetUserTeams(repoOwner, approver)
+		if err != nil {
+			slog.Warn("Failed to get teams for approver",
+				"approver", approver,
+				"error", err,
+			)
+			continue
+		}
+		for _, team := range approverTeams {
+			approvalTeamsSet[team] = true
+		}
+	}
+
+	// Convert set to slice
+	approvalTeams := make([]string, 0, len(approvalTeamsSet))
+	for team := range approvalTeamsSet {
+		approvalTeams = append(approvalTeams, team)
+	}
+
+	slog.Info("Computed policy fields for jobs",
+		"requestedBy", requestedBy,
+		"prNumber", prNumber,
+		"teamsCount", len(teams),
+		"approvalsCount", len(approvals),
+		"approvalTeamsCount", len(approvalTeams),
+	)
+
+	// Populate all jobs with the same values
+	for i := range jobs {
+		jobs[i].Teams = teams
+		jobs[i].Approvals = approvals
+		jobs[i].ApprovalTeams = approvalTeams
+	}
+
+	return nil
 }

@@ -40,6 +40,10 @@ type Job struct {
 	CommandRoleArn     string
 	CognitoOidcConfig  *configuration.AwsCognitoOidcConfig
 	SkipMergeCheck     bool
+	// Policy-related fields computed on backend/webhook side
+	Teams         []string
+	Approvals     []string
+	ApprovalTeams []string
 }
 
 type Step struct {

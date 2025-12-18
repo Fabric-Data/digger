@@ -221,7 +221,8 @@ func TestDiggerAccessPolicyChecker_Check(t *testing.T) {
 			}
 			teams := []string{"engineering"}
 			approvals := []string{}
-			got, err := p.CheckAccessPolicy(tt.organisation, tt.name, tt.name, "", tt.command, nil, tt.requestedBy, teams, approvals, tt.planPolicyViolations)
+			approvalTeams := []string{}
+			got, err := p.CheckAccessPolicy(tt.organisation, tt.name, tt.name, "", tt.command, nil, tt.requestedBy, teams, approvals, approvalTeams, tt.planPolicyViolations)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DiggerPolicyChecker.CheckAccessPolicy() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -276,7 +277,8 @@ func TestDiggerPlanPolicyChecker_Check(t *testing.T) {
 			requestedBy := "test-user"
 			teams := []string{"engineering"}
 			approvals := []string{}
-			got, _, err := p.CheckPlanPolicy("", "", "", "", requestedBy, teams, approvals, tt.planJsonOutput)
+			approvalTeams := []string{"platform"}
+			got, _, err := p.CheckPlanPolicy("", "", "", "", requestedBy, teams, approvals, approvalTeams, tt.planJsonOutput)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DiggerPolicyChecker.CheckPlanPolicy() error = %v, wantErr %v", err, tt.wantErr)
 				return

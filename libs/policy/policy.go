@@ -30,11 +30,11 @@ type DiggerHttpPolicyProvider struct {
 type NoOpPolicyChecker struct {
 }
 
-func (p NoOpPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, planPolicyViolations []string) (bool, error) {
+func (p NoOpPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string) (bool, error) {
 	return true, nil
 }
 
-func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
+func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, approvalTeams []string, planOutput string) (bool, []string, error) {
 	return true, nil, nil
 }
 
@@ -343,7 +343,7 @@ type DiggerPolicyChecker struct {
 }
 
 // TODO refactor to use AccessPolicyContext - too many arguments
-func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, planPolicyViolations []string) (bool, error) {
+func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string) (bool, error) {
 	slog.Debug("Checking access policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
@@ -363,6 +363,7 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMreposi
 		"organisation":         SCMOrganisation,
 		"teams":                teams,
 		"approvals":            approvals,
+		"approval_teams":       approvalTeams,
 		"planPolicyViolations": planPolicyViolations,
 		"action":               command,
 		"project":              projectName,
@@ -418,7 +419,7 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMreposi
 	return true, nil
 }
 
-func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
+func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, approvalTeams []string, planOutput string) (bool, []string, error) {
 	slog.Debug("Checking plan policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
@@ -426,6 +427,7 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 		"requestedBy", requestedBy,
 		"teams", teams,
 		"approvals", approvals,
+		"approvalTeams", approvalTeams,
 	)
 
 	policy, err := p.PolicyProvider.GetPlanPolicy(SCMOrganisation, SCMrepository, projectname, projectDir)
@@ -442,12 +444,13 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 	}
 
 	input := map[string]interface{}{
-		"terraform":    parsedPlanOutput,
-		"user":         requestedBy,
-		"organisation": SCMOrganisation,
-		"project":      projectname,
-		"teams":        teams,
-		"approvals":    approvals,
+		"terraform":      parsedPlanOutput,
+		"user":           requestedBy,
+		"organisation":   SCMOrganisation,
+		"project":        projectname,
+		"teams":          teams,
+		"approvals":      approvals,
+		"approval_teams": approvalTeams,
 	}
 
 	if policy == "" {
