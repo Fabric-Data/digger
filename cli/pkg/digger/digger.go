@@ -75,13 +75,50 @@ func RunJobs(jobs []orchestrator.Job, prService ci.PullRequestService, orgServic
 	exectorResults := make([]execution.DiggerExecutorResult, len(jobs))
 	appliesPerProject := make(map[string]bool)
 
+	// Compute teams and approvals once for all jobs (assumes all jobs are from the same user and PR)
+	var teams []string
+	var approvals []string
+	var requestedBy string
+	var prNumber *int
+	var SCMOrganisation string
+
+	if len(jobs) > 0 {
+		firstJob := jobs[0]
+		splits := strings.Split(firstJob.Namespace, "/")
+		SCMOrganisation = splits[0]
+		requestedBy = firstJob.RequestedBy
+		prNumber = firstJob.PullRequestNumber
+
+		var err error
+		teams, err = orgService.GetUserTeams(SCMOrganisation, requestedBy)
+		if err != nil {
+			slog.Error("Error fetching user teams",
+				"organisation", SCMOrganisation,
+				"user", requestedBy,
+				"error", err)
+			slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
+			teams = []string{}
+		}
+
+		// Compute approvals for the PR (if applicable)
+		approvals = make([]string, 0)
+		if prNumber != nil {
+			approvals, err = prService.GetApprovals(*prNumber)
+			if err != nil {
+				slog.Warn("Failed to get PR approvals",
+					"prNumber", *prNumber,
+					"error", err)
+			}
+		}
+	}
+
 	for i, job := range jobs {
 		splits := strings.Split(job.Namespace, "/")
 		SCMOrganisation := splits[0]
 		SCMrepository := splits[1]
 
 		for _, command := range job.Commands {
-			allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(orgService, &prService, SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, job.RequestedBy, []string{})
+			allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, job.RequestedBy, teams, approvals, []string{})
 
 			if err != nil {
 				return false, false, fmt.Errorf("error checking policy: %v", err)
@@ -185,7 +222,29 @@ func reportPolicyError(projectName string, command string, requestedBy string, r
 func run(command string, job orchestrator.Job, policyChecker policy.Checker, orgService ci.OrgService, SCMOrganisation string, SCMrepository string, PRNumber *int, requestedBy string, reporter reporting.Reporter, lock locking2.Lock, prService ci.PullRequestService, projectNamespace string, workingDir string, planStorage storage.PlanStorage, appliesPerProject map[string]bool) (*execution.DiggerExecutorResult, string, error) {
 	slog.Info("Running command for project", "command", command, "project name", job.ProjectName, "project workflow", job.ProjectWorkflow)
 
-	allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(orgService, &prService, SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, requestedBy, []string{})
+	// Compute teams for the user
+	teams, err := orgService.GetUserTeams(SCMOrganisation, requestedBy)
+	if err != nil {
+		slog.Error("Error fetching user teams",
+			"organisation", SCMOrganisation,
+			"user", requestedBy,
+			"error", err)
+		slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
+		teams = []string{}
+	}
+
+	// Compute approvals for the PR (if applicable)
+	var approvals = make([]string, 0)
+	if job.PullRequestNumber != nil {
+		approvals, err = prService.GetApprovals(*job.PullRequestNumber)
+		if err != nil {
+			slog.Warn("Failed to get PR approvals",
+				"prNumber", *job.PullRequestNumber,
+				"error", err)
+		}
+	}
+
+	allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, requestedBy, teams, approvals, []string{})
 
 	if err != nil {
 		return nil, "error checking policy", fmt.Errorf("error checking policy: %v", err)
@@ -275,6 +334,7 @@ func run(command string, job orchestrator.Job, policyChecker policy.Checker, org
 		} else if planPerformed {
 			if isNonEmptyPlan {
 				reportTerraformPlanOutput(reporter, projectLock.LockId(), plan)
+
 				planIsAllowed, messages, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, planJsonOutput)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to validate plan. %v", err)
@@ -383,7 +443,28 @@ func run(command string, job orchestrator.Job, policyChecker policy.Checker, org
 				planPolicyViolations = []string{}
 			}
 
-			allowedToApply, err := policyChecker.CheckAccessPolicy(orgService, &prService, SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, requestedBy, planPolicyViolations)
+			// Re-compute teams and approvals for apply command
+			teams, err := orgService.GetUserTeams(SCMOrganisation, requestedBy)
+			if err != nil {
+				slog.Error("Error fetching user teams",
+					"organisation", SCMOrganisation,
+					"user", requestedBy,
+					"error", err)
+				slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
+				teams = []string{}
+			}
+
+			var approvals = make([]string, 0)
+			if job.PullRequestNumber != nil {
+				approvals, err = prService.GetApprovals(*job.PullRequestNumber)
+				if err != nil {
+					slog.Warn("Failed to get PR approvals",
+						"prNumber", *job.PullRequestNumber,
+						"error", err)
+				}
+			}
+
+			allowedToApply, err := policyChecker.CheckAccessPolicy(SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, requestedBy, teams, approvals, planPolicyViolations)
 			if err != nil {
 				msg := fmt.Sprintf("Failed to run plan policy check before apply. %v", err)
 				slog.Error("Failed to run plan policy check before apply", "error", err)
@@ -540,9 +621,22 @@ func RunJob(
 	SCMOrganisation, SCMrepository := utils.ParseRepoNamespace(repo)
 	slog.Info("Running commands for project", "commands", job.Commands, "project name", job.ProjectName)
 
-	for _, command := range job.Commands {
+	// Compute teams once for all commands (all commands are for the same user)
+	teams, err := orgService.GetUserTeams(SCMOrganisation, requestedBy)
+	if err != nil {
+		slog.Error("Error fetching user teams",
+			"organisation", SCMOrganisation,
+			"user", requestedBy,
+			"error", err)
+		slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
+		teams = []string{}
+	}
 
-		allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(orgService, nil, SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, nil, requestedBy, []string{})
+	// No PR approvals in RunJob context (prService is nil)
+	var approvals = make([]string, 0)
+
+	for _, command := range job.Commands {
+		allowedToPerformCommand, err := policyChecker.CheckAccessPolicy(SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, nil, requestedBy, teams, approvals, []string{})
 
 		if err != nil {
 			return fmt.Errorf("error checking policy: %v", err)

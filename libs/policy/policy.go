@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/diggerhq/digger/libs/ci"
 	"github.com/open-policy-agent/opa/rego"
 )
 
@@ -31,7 +30,7 @@ type DiggerHttpPolicyProvider struct {
 type NoOpPolicyChecker struct {
 }
 
-func (p NoOpPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prService *ci.PullRequestService, SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, planPolicyViolations []string) (bool, error) {
+func (p NoOpPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, planPolicyViolations []string) (bool, error) {
 	return true, nil
 }
 
@@ -344,7 +343,7 @@ type DiggerPolicyChecker struct {
 }
 
 // TODO refactor to use AccessPolicyContext - too many arguments
-func (p DiggerPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prService *ci.PullRequestService, SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, planPolicyViolations []string) (bool, error) {
+func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, planPolicyViolations []string) (bool, error) {
 	slog.Debug("Checking access policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
@@ -357,27 +356,6 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prServic
 	if err != nil {
 		slog.Error("Error fetching policy", "error", err)
 		return false, err
-	}
-
-	teams, err := ciService.GetUserTeams(SCMOrganisation, requestedBy)
-	if err != nil {
-		slog.Error("Error fetching user teams",
-			"organisation", SCMOrganisation,
-			"user", requestedBy,
-			"error", err)
-		slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
-		teams = []string{}
-	}
-
-	// list of pull request approvals (if applicable)
-	var approvals = make([]string, 0)
-	if prService != nil && prNumber != nil {
-		approvals, err = (*prService).GetApprovals(*prNumber)
-		if err != nil {
-			slog.Warn("Failed to get PR approvals",
-				"prNumber", *prNumber,
-				"error", err)
-		}
 	}
 
 	input := map[string]interface{}{
