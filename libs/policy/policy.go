@@ -34,7 +34,7 @@ func (p NoOpPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMreposito
 	return true, nil
 }
 
-func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, planOutput string) (bool, []string, error) {
+func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
 	return true, nil, nil
 }
 
@@ -418,11 +418,12 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMreposi
 	return true, nil
 }
 
-func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, planOutput string) (bool, []string, error) {
+func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
 	slog.Debug("Checking plan policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
-		"project", projectname)
+		"project", projectname,
+		"requestedBy", requestedBy)
 
 	policy, err := p.PolicyProvider.GetPlanPolicy(SCMOrganisation, SCMrepository, projectname, projectDir)
 	if err != nil {
@@ -438,7 +439,12 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 	}
 
 	input := map[string]interface{}{
-		"terraform": parsedPlanOutput,
+		"terraform":    parsedPlanOutput,
+		"user":         requestedBy,
+		"organisation": SCMOrganisation,
+		"project":      projectname,
+		"teams":        teams,
+		"approvals":    approvals,
 	}
 
 	if policy == "" {

@@ -335,7 +335,7 @@ func run(command string, job orchestrator.Job, policyChecker policy.Checker, org
 			if isNonEmptyPlan {
 				reportTerraformPlanOutput(reporter, projectLock.LockId(), plan)
 
-				planIsAllowed, messages, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, planJsonOutput)
+				planIsAllowed, messages, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, requestedBy, teams, approvals, planJsonOutput)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to validate plan. %v", err)
 					slog.Error("Failed to validate plan.", "error", err)
@@ -431,7 +431,7 @@ func run(command string, job orchestrator.Job, policyChecker policy.Checker, org
 					return nil, msg, fmt.Errorf("%s", msg)
 				}
 
-				_, violations, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, terraformPlanJsonStr)
+				_, violations, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, requestedBy, teams, approvals, terraformPlanJsonStr)
 				if err != nil {
 					msg := fmt.Sprintf("Failed to check plan policy. %v", err)
 					slog.Error("Failed to check plan policy.", "error", err)
@@ -711,7 +711,7 @@ func RunJob(
 				slog.Error(msg)
 				return fmt.Errorf("%s", msg)
 			}
-			planIsAllowed, messages, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, planJsonOutput)
+			planIsAllowed, messages, err := policyChecker.CheckPlanPolicy(SCMrepository, SCMOrganisation, job.ProjectName, job.ProjectDir, requestedBy, teams, approvals, planJsonOutput)
 			slog.Info(strings.Join(messages, "\n"))
 			if err != nil {
 				msg := fmt.Sprintf("Failed to validate plan %v", err)

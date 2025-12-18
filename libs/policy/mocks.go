@@ -7,7 +7,7 @@ func (t MockPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMreposito
 	return false, nil
 }
 
-func (t MockPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, planOutput string) (bool, []string, error) {
+func (t MockPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, planOutput string) (bool, []string, error) {
 	return false, nil, nil
 }
 
