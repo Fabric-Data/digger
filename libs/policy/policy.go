@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/diggerhq/digger/libs/ci"
 	"github.com/open-policy-agent/opa/rego"
 )
 
@@ -31,11 +30,11 @@ type DiggerHttpPolicyProvider struct {
 type NoOpPolicyChecker struct {
 }
 
-func (p NoOpPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prService *ci.PullRequestService, SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, planPolicyViolations []string) (bool, error) {
+func (p NoOpPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string) (bool, error) {
 	return true, nil
 }
 
-func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, planOutput string) (bool, []string, error) {
+func (p NoOpPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, approvalTeams []string, planOutput string) (bool, []string, error) {
 	return true, nil, nil
 }
 
@@ -344,7 +343,7 @@ type DiggerPolicyChecker struct {
 }
 
 // TODO refactor to use AccessPolicyContext - too many arguments
-func (p DiggerPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prService *ci.PullRequestService, SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, planPolicyViolations []string) (bool, error) {
+func (p DiggerPolicyChecker) CheckAccessPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string) (bool, error) {
 	slog.Debug("Checking access policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
@@ -359,32 +358,12 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prServic
 		return false, err
 	}
 
-	teams, err := ciService.GetUserTeams(SCMOrganisation, requestedBy)
-	if err != nil {
-		slog.Error("Error fetching user teams",
-			"organisation", SCMOrganisation,
-			"user", requestedBy,
-			"error", err)
-		slog.Warn("Teams failed to be fetched, using empty list for access policy checks")
-		teams = []string{}
-	}
-
-	// list of pull request approvals (if applicable)
-	var approvals = make([]string, 0)
-	if prService != nil && prNumber != nil {
-		approvals, err = (*prService).GetApprovals(*prNumber)
-		if err != nil {
-			slog.Warn("Failed to get PR approvals",
-				"prNumber", *prNumber,
-				"error", err)
-		}
-	}
-
 	input := map[string]interface{}{
 		"user":                 requestedBy,
 		"organisation":         SCMOrganisation,
 		"teams":                teams,
 		"approvals":            approvals,
+		"approval_teams":       approvalTeams,
 		"planPolicyViolations": planPolicyViolations,
 		"action":               command,
 		"project":              projectName,
@@ -440,11 +419,16 @@ func (p DiggerPolicyChecker) CheckAccessPolicy(ciService ci.OrgService, prServic
 	return true, nil
 }
 
-func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, planOutput string) (bool, []string, error) {
+func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisation string, projectname string, projectDir string, requestedBy string, teams []string, approvals []string, approvalTeams []string, planOutput string) (bool, []string, error) {
 	slog.Debug("Checking plan policy",
 		"organisation", SCMOrganisation,
 		"repository", SCMrepository,
-		"project", projectname)
+		"project", projectname,
+		"requestedBy", requestedBy,
+		"teams", teams,
+		"approvals", approvals,
+		"approvalTeams", approvalTeams,
+	)
 
 	policy, err := p.PolicyProvider.GetPlanPolicy(SCMOrganisation, SCMrepository, projectname, projectDir)
 	if err != nil {
@@ -460,7 +444,13 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 	}
 
 	input := map[string]interface{}{
-		"terraform": parsedPlanOutput,
+		"terraform":      parsedPlanOutput,
+		"user":           requestedBy,
+		"organisation":   SCMOrganisation,
+		"project":        projectname,
+		"teams":          teams,
+		"approvals":      approvals,
+		"approval_teams": approvalTeams,
 	}
 
 	if policy == "" {

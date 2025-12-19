@@ -1,7 +1,6 @@
 package policy
 
 import (
-	"github.com/diggerhq/digger/libs/ci"
 	"testing"
 )
 
@@ -220,8 +219,10 @@ func TestDiggerAccessPolicyChecker_Check(t *testing.T) {
 			var p = &DiggerPolicyChecker{
 				PolicyProvider: tt.fields.PolicyProvider,
 			}
-			ciService := ci.MockPullRequestManager{Teams: []string{"engineering"}}
-			got, err := p.CheckAccessPolicy(ciService, nil, tt.organisation, tt.name, tt.name, "", tt.command, nil, tt.requestedBy, tt.planPolicyViolations)
+			teams := []string{"engineering"}
+			approvals := []string{}
+			approvalTeams := []string{}
+			got, err := p.CheckAccessPolicy(tt.organisation, tt.name, tt.name, "", tt.command, nil, tt.requestedBy, teams, approvals, approvalTeams, tt.planPolicyViolations)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DiggerPolicyChecker.CheckAccessPolicy() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -273,7 +274,11 @@ func TestDiggerPlanPolicyChecker_Check(t *testing.T) {
 			var p = &DiggerPolicyChecker{
 				PolicyProvider: tt.fields.PolicyProvider,
 			}
-			got, _, err := p.CheckPlanPolicy("", "", "", "", tt.planJsonOutput)
+			requestedBy := "test-user"
+			teams := []string{"engineering"}
+			approvals := []string{}
+			approvalTeams := []string{"platform"}
+			got, _, err := p.CheckPlanPolicy("", "", "", "", requestedBy, teams, approvals, approvalTeams, tt.planJsonOutput)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DiggerPolicyChecker.CheckPlanPolicy() error = %v, wantErr %v", err, tt.wantErr)
 				return

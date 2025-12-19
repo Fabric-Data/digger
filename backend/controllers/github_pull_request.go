@@ -500,6 +500,25 @@ func handlePullRequestEvent(gh utils.GithubClientProvider, payload *github.PullR
 
 	}
 
+	// Compute teams, approvals, and approval_teams for policy evaluation
+	jobsSlice := make([]scheduler.Job, 0, len(impactedJobsMap))
+	for _, job := range impactedJobsMap {
+		jobsSlice = append(jobsSlice, job)
+	}
+	err = populatePolicyFieldsForJobs(ghService, ghService, jobsSlice, repoOwner, prNumber)
+	if err != nil {
+		slog.Error("Error populating policy fields for jobs",
+			"prNumber", prNumber,
+			"error", err,
+		)
+		// Don't fail the entire process, just log the error
+		// The CLI will use empty values if these aren't populated
+	}
+	// Update the map with populated jobs
+	for i, job := range jobsSlice {
+		impactedJobsMap[job.ProjectName] = jobsSlice[i]
+	}
+
 	batchId, _, err := utils.ConvertJobsToDiggerJobs(*diggerCommand, reporterType, models.DiggerVCSGithub, organisationId, impactedJobsMap, impactedProjectsMap, projectsGraph, installationId, branch, prNumber, repoOwner, repoName, repoFullName, commitSha, &commentId, diggerYmlStr, 0, aiSummaryCommentId, config.ReportTerraformOutputs, coverAllImpactedProjects, nil, batchCheckRunData, jobsCheckRunIdsMap)
 	if err != nil {
 		slog.Error("Error converting jobs to Digger jobs",
