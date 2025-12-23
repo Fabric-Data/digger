@@ -87,6 +87,12 @@
             ]
           },
           {
+            "group": "Concepts",
+            "pages":  [
+                "ce/concepts/unit"
+            ]
+          },
+          {
             "group": "How To",
             "pages": [
               "ce/howto/noise-reduction",
