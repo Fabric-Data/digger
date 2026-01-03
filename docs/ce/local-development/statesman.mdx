@@ -1,81 +1,262 @@
 ---
-title: Statesman local setup
+title: Running Statesman Locally
 ---
 
-Statesman serves state storage + Terraform Cloud-compatible APIs. The UI uses its internal endpoints, so enable webhook auth and sync your org/user.
+Statesman provides state storage and Terraform Cloud-compatible APIs for managing Terraform workspaces, runs, and state files. The UI uses Statesman's internal endpoints, so you'll need to enable webhook authentication and sync your organization and user data.
 
-## First-time setup (SQLite migrations)
+## Prerequisites
 
-If using SQLite with persistence, run migrations before starting:
+Before you begin, ensure you have the following installed:
+
+- Go 1.25 or later
+- [Atlas CLI](https://atlasgo.io/getting-started#installation) (for database migrations)
+- SQLite (bundled with most systems) or S3 credentials (for production deployments)
+
+<Tip>
+If you don't have Atlas installed, you can install it by running `make atlas-install` from the `taco` directory.
+</Tip>
+
+## Installation
+
+<Steps>
+  <Step title="Navigate to the taco directory">
+    From your project root, navigate to the Statesman directory:
+    ```bash
+    cd taco
+    ```
+  </Step>
+
+  <Step title="Run database migrations">
+    If you're using SQLite with persistence, create the data directory and apply the migrations before starting Statesman:
+
+    ```bash
+    # Create the data directory if it doesn't exist
+    mkdir -p data
+
+    # Apply migrations
+    atlas migrate apply --dir file://migrations/sqlite --url "sqlite://data/taco.db"
+    ```
+
+    <Note>
+    If you encounter checksum errors, regenerate the hash first:
+    ```bash
+    atlas migrate hash --dir file://migrations/sqlite
+    ```
+    </Note>
+  </Step>
+
+  <Step title="Build Statesman">
+    Build the Statesman service:
+    ```bash
+    make build-svc
+    ```
+    This creates the `statesman` executable in your current directory.
+  </Step>
+
+  <Step title="Start the service">
+    Run Statesman with your preferred configuration:
+
+    ```bash
+    ./statesman -storage memory -auth-disable
+    ```
+
+    The service will start on port `8080` by default.
+
+    <Tip>
+    For local development, use `-storage memory` to avoid database setup. This option uses in-memory storage with SQLite as the query backend.
+    </Tip>
+  </Step>
+</Steps>
+
+## Configuration
+
+Configure Statesman using environment variables:
+
+### Basic Configuration
 
 ```bash
-cd taco
-
-# If you get checksum errors, regenerate the hash first:
-atlas migrate hash --dir file://migrations/sqlite
-
-# Apply migrations (adjust path to match your OPENTACO_SQLITE_DB_PATH)
-atlas migrate apply --dir file://migrations/sqlite --url "sqlite://cmd/statesman/data/taco.db"
+OPENTACO_PORT=8080                    # Port to run the service (default: 8080)
+OPENTACO_STORAGE=memory               # Storage backend: 'memory' or 's3'
+OPENTACO_AUTH_DISABLE=true            # Skip OIDC authentication (for local development)
 ```
 
-If you don't have Atlas installed: `make atlas-install`
+### UI Integration
 
-## Quick start
-
-1. Set env vars:
-   ```bash
-   OPENTACO_ENABLE_INTERNAL_ENDPOINTS=statesman-secret   # must match UI STATESMAN_BACKEND_WEBHOOK_SECRET
-   OPENTACO_AUTH_DISABLE=true                            # skips OIDC for local
-   OPENTACO_STORAGE=memory                               # default; uses SQLite query backend automatically
-   # Optional: OPENTACO_SECRET_KEY for signed URLs; OPENTACO_PORT=8080
-   ```
-2. Run the service (from repo root):
-   ```bash
-   cd taco
-   go run cmd/statesman/main.go -storage memory -auth-disable   # or ./statesman with the same flags
-   ```
-   Default port: `8080`.
-
-## Sync org and user (required for UI)
-
-Statesman resolves orgs by `external_org_id` (your WorkOS org id). If it cannot resolve, `/internal/api/units` will 500.
-
-A helper script is available at `taco/cmd/statesman/sync-org.sh` - edit the values before running:
+To enable the UI to communicate with Statesman, set the webhook secret:
 
 ```bash
-chmod +x taco/cmd/statesman/sync-org.sh
-./taco/cmd/statesman/sync-org.sh
+OPENTACO_ENABLE_INTERNAL_ENDPOINTS=statesman-secret
 ```
 
-Or run manually:
+<Warning>
+This secret must match `STATESMAN_BACKEND_WEBHOOK_SECRET` in your UI's `.env.local` file.
+</Warning>
+
+<Accordion title="Advanced Configuration Options">
+
+### S3 Storage Backend
+
+For production deployments, configure S3 storage:
 
 ```bash
+OPENTACO_STORAGE=s3
+OPENTACO_S3_BUCKET=my-bucket
+OPENTACO_S3_REGION=us-east-1
+OPENTACO_S3_PREFIX=opentaco/
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+```
+
+### Additional Options
+
+```bash
+OPENTACO_SECRET_KEY=<secret>          # Secret key for signed URLs
+OPENTACO_SQLITE_DB_PATH=<path>        # Custom SQLite database path
+```
+
+</Accordion>
+
+## Using Statesman as a Terraform Backend
+
+Once Statesman is running, you can configure Terraform to use it as a remote backend.
+
+### Terraform Configuration
+
+Add the following backend configuration to your Terraform code:
+
+```hcl
+terraform {
+  backend "remote" {
+    hostname     = "localhost:8080"
+    organization = "your-org-name"
+
+    workspaces {
+      name = "my-workspace"
+    }
+  }
+}
+```
+
+<Note>
+For production deployments, replace `localhost:8080` with your Statesman instance's public URL. If authentication is enabled, you'll also need to configure credentials.
+</Note>
+
+### Authentication
+
+If you've enabled authentication (not using `-auth-disable`), configure your Terraform credentials:
+
+```bash
+# Create credentials file at ~/.terraform.d/credentials.tfrc.json
+{
+  "credentials": {
+    "localhost:8080": {
+      "token": "your-auth-token"
+    }
+  }
+}
+```
+
+## Syncing Organizations and Users
+
+<Accordion title="Syncing for UI Integration">
+
+The UI requires organization and user data to be synced to Statesman. Statesman resolves organizations by `external_org_id` (your WorkOS organization ID). If the organization cannot be resolved, `/internal/api/units` will return a 500 error.
+
+### Using the Sync Script
+
+A helper script is available to simplify the sync process:
+
+```bash
+chmod +x cmd/statesman/sync-org.sh
+./cmd/statesman/sync-org.sh
+```
+
+<Note>
+Edit the script with your WorkOS organization and user IDs before running it.
+</Note>
+
+### Manual Sync
+
+Alternatively, you can sync manually using curl commands:
+
+```bash
+# Set your configuration
 SECRET=$OPENTACO_ENABLE_INTERNAL_ENDPOINTS
-ORG_ID=org_xxx                        # WorkOS org id
-ORG_NAME=digger-org                   # slug to store
-ORG_DISPLAY="Digger Org"
-USER_ID=user_xxx                      # WorkOS user id
-USER_EMAIL=you@example.com
+ORG_ID=org_xxx                        # Your WorkOS organization ID
+ORG_NAME=digger-org                   # Organization slug
+ORG_DISPLAY="Digger Org"              # Organization display name
+USER_ID=user_xxx                      # Your WorkOS user ID
+USER_EMAIL=you@example.com            # Your email address
 
-# create/sync org
-curl -s -X POST http://localhost:8080/internal/api/orgs/sync \
+# Sync the organization
+curl -X POST http://localhost:8080/internal/api/orgs/sync \
   -H "Authorization: Bearer $SECRET" \
-  -H "X-User-ID: $USER_ID" -H "X-Email: $USER_EMAIL" \
+  -H "X-User-ID: $USER_ID" \
+  -H "X-Email: $USER_EMAIL" \
   -H "Content-Type: application/json" \
-  -d '{"name":"'"$ORG_NAME"'","display_name":"'"$ORG_DISPLAY"'","external_org_id":"'"$ORG_ID"'"}'
+  -d '{
+    "name": "'"$ORG_NAME"'",
+    "display_name": "'"$ORG_DISPLAY"'",
+    "external_org_id": "'"$ORG_ID"'"
+  }'
 
-# ensure user exists in that org
-curl -s -X POST http://localhost:8080/internal/api/users \
+# Create the user in the organization
+curl -X POST http://localhost:8080/internal/api/users \
   -H "Authorization: Bearer $SECRET" \
-  -H "X-Org-ID: '$ORG_ID'" -H "X-User-ID: $USER_ID" -H "X-Email: $USER_EMAIL" \
+  -H "X-Org-ID: $ORG_ID" \
+  -H "X-User-ID: $USER_ID" \
+  -H "X-Email: $USER_EMAIL" \
   -H "Content-Type: application/json" \
-  -d '{"subject":"'"$USER_ID"'","email":"'"$USER_EMAIL"'"}'
+  -d '{
+    "subject": "'"$USER_ID"'",
+    "email": "'"$USER_EMAIL"'"
+  }'
 ```
+
+</Accordion>
 
 ## Troubleshooting
 
-- **"no such table: organizations"**: Run migrations first (see First-time setup above).
-- **Atlas checksum mismatch**: Run `atlas migrate hash --dir file://migrations/sqlite` then retry apply.
-- **403**: webhook secret mismatch (`OPENTACO_ENABLE_INTERNAL_ENDPOINTS` vs UI `STATESMAN_BACKEND_WEBHOOK_SECRET`).
-- **404/500 resolving org**: org not synced; rerun the sync script or `orgs/sync` call above.
-- **SQLite quirks**: defaults to SQLite in-process; no config needed for local. For Postgres/MySQL, set `TACO_QUERY_BACKEND` and related envs (see `docs/ce/state-management/query-backend`).
+### Database Errors
+
+**"unable to open database file: no such file or directory"**
+
+This error occurs when the data directory doesn't exist. Create it first:
+
+```bash
+cd taco
+mkdir -p data
+atlas migrate apply --dir file://migrations/sqlite --url "sqlite://data/taco.db"
+```
+
+**"no such table: organizations"**
+
+This error indicates that migrations have not been applied. Run the migrations as described in Step 2 of the Installation section.
+
+**Atlas checksum mismatch**
+
+If you encounter checksum errors during migration, regenerate the hash:
+
+```bash
+atlas migrate hash --dir file://migrations/sqlite
+```
+
+Then retry the migration apply command.
+
+### Authentication Errors
+
+**403 Forbidden**
+
+This typically indicates a webhook secret mismatch. Verify that `OPENTACO_ENABLE_INTERNAL_ENDPOINTS` matches `STATESMAN_BACKEND_WEBHOOK_SECRET` in your UI configuration.
+
+### Organization Resolution Errors
+
+**404 or 500 errors when resolving organization**
+
+The organization has not been synced to Statesman. Run the sync script or manual sync commands described in the "Syncing Organizations and Users" section.
+
+### Storage Configuration
+
+**SQLite quirks**
+
+By default, Statesman uses SQLite as the in-process query backend. No additional configuration is needed for local development. For PostgreSQL or MySQL backends, set `TACO_QUERY_BACKEND` and related environment variables (see `docs/ce/state-management/query-backend` for details).

@@ -89,8 +89,10 @@
           {
             "group": "Concepts",
             "pages":  [
-                "ce/concepts/unit"
-            ]
+                "ce/concepts/unit",
+                "ce/concepts/role"
+
+              ]
           },
           {
             "group": "How To",
