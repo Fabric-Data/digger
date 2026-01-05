@@ -4,6 +4,10 @@ import (
 	"crypto/fips140"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"os"
+	"runtime/debug"
+
 	"github.com/diggerhq/digger/cli/pkg/digger"
 	"github.com/diggerhq/digger/cli/pkg/github"
 	spec2 "github.com/diggerhq/digger/cli/pkg/spec"
@@ -17,16 +21,30 @@ import (
 	comment_summary "github.com/diggerhq/digger/libs/comment_utils/summary"
 	lib_spec "github.com/diggerhq/digger/libs/spec"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
-	"runtime/debug"
 )
+
+func initLogger() {
+	logLevel := os.Getenv("DIGGER_LOG_LEVEL")
+	var level slog.Leveler
+	if logLevel == "DEBUG" {
+		level = slog.LevelDebug
+	} else if logLevel == "WARN" {
+		level = slog.LevelWarn
+	} else {
+		level = slog.LevelInfo
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
+}
 
 var defaultCmd = &cobra.Command{
 	Use: "default",
 	Run: func(cmd *cobra.Command, args []string) {
+		initLogger()
 		specStr := os.Getenv("DIGGER_RUN_SPEC")
-		log.Printf("Fips140 enabled in build: %v", fips140.Enabled())
+		slog.Info("Fips140 enabled in build", "enabled", fips140.Enabled())
 		if specStr != "" {
 			var spec lib_spec.Spec
 			err := json.Unmarshal([]byte(specStr), &spec)
@@ -70,7 +88,7 @@ var defaultCmd = &cobra.Command{
 			logLeader = os.Getenv("GITHUB_ACTOR")
 			github.GitHubCI(lock, policy.PolicyCheckerProviderAdvanced{}, BackendApi, ReportStrategy, github2.GithubServiceProviderAdvanced{}, comment_updater.CommentUpdaterProviderAdvanced{}, drift.DriftNotificationProviderAdvanced{})
 		case digger.GitLab:
-			log.Printf("gitlab CI detected")
+			slog.Info("gitlab CI detected")
 			gitlab.GitLabCI(lock, policy.PolicyCheckerProviderAdvanced{}, BackendApi, ReportStrategy, github2.GithubServiceProviderAdvanced{}, comment_updater.CommentUpdaterProviderAdvanced{}, drift.DriftNotificationProviderAdvanced{})
 		case digger.None:
 			print("No CI detected.")
@@ -79,10 +97,10 @@ var defaultCmd = &cobra.Command{
 
 		defer func() {
 			if r := recover(); r != nil {
-				log.Println("stacktrace from panic: \n" + string(debug.Stack()))
+				slog.Error("stacktrace from panic", "stack", string(debug.Stack()))
 				err := usage.SendLogRecord(logLeader, fmt.Sprintf("Panic occurred. %s", r))
 				if err != nil {
-					log.Printf("Failed to send log record. %s\n", err)
+					slog.Error("Failed to send log record", "error", err)
 				}
 				os.Exit(1)
 			}
