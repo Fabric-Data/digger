@@ -1,0 +1,21 @@
+---
+title: "Units"
+---
+
+A unit is an OpenTaco workspace: the smallest deployable Terraform state plus its lock and history. Each unit tracks one Terraform state file, supports optimistic locking, and keeps a versioned history so you can restore any previous state snapshot.
+
+
+## Use case for units 
+Units are useful for both small and large teams to organize and manage multiple states (or workspaces as you might be used to):
+- Isolate environments or services (e.g., `app/prod`, `network/shared`).
+- Work in parallel while lock semantics prevent conflicting writes.
+- Keep built-in state history, incase you need to rollback.
+
+
+## Interacting with units. 
+You can manage units via the `unit` sub-command on the `taco` CLI, available subcommands are
+- `create`, `ls`, `info`, `rm` : basic lifecycle for unit registration.
+- `pull`, `push`, `acquire`, `release` :download/upload state with optional locking.
+- `lock`, `unlock` : manage locks directly when coordinating writers.
+- `versions`, `restore` : list history and roll back to a prior state snapshot.
+- `status` : view dependency status for a unit or prefix.

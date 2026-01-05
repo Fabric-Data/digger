@@ -87,6 +87,14 @@
             ]
           },
           {
+            "group": "Concepts",
+            "pages":  [
+                "ce/concepts/unit",
+                "ce/concepts/role"
+
+              ]
+          },
+          {
             "group": "How To",
             "pages": [
               "ce/howto/noise-reduction",
