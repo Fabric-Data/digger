@@ -262,6 +262,10 @@ inputs:
     description: "Architecture of the digger CLI to install. Valid configurable values are: amd64, arm64, 386."
     required: false
     default: "X64"
+  log-level:
+    description: "Log level for digger CLI. Valid values are: DEBUG, INFO, WARN, ERROR."
+    required: false
+    default: "INFO"
 
 outputs:
   output:
@@ -527,7 +531,7 @@ runs:
         TG_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         TERRAGRUNT_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         DIGGER_RUN_SPEC: ${{inputs.digger-spec}}
-        DIGGER_LOG_LEVEL: ${{ env.DIGGER_LOG_LEVEL }}
+        DIGGER_LOG_LEVEL: ${{ inputs.log-level }}
       run: |
         if [[ ${{ inputs.ee }} == "true" ]]; then
           cd $GITHUB_ACTION_PATH/ee/cli
@@ -580,7 +584,7 @@ runs:
         TG_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         TERRAGRUNT_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         DIGGER_RUN_SPEC: ${{inputs.digger-spec}}
-        DIGGER_LOG_LEVEL: ${{ env.DIGGER_LOG_LEVEL }}
+        DIGGER_LOG_LEVEL: ${{ inputs.log-level }}
       id: digger
       shell: bash
       run: |
@@ -667,7 +671,7 @@ runs:
         TG_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         TERRAGRUNT_PROVIDER_CACHE_DIR: ${{ env.TF_PLUGIN_CACHE_DIR }}
         DIGGER_RUN_SPEC: ${{inputs.digger-spec}}
-        DIGGER_LOG_LEVEL: ${{ env.DIGGER_LOG_LEVEL }}
+        DIGGER_LOG_LEVEL: ${{ inputs.log-level }}
       id: digger-local-run
       shell: bash
       run: |
