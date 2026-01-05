@@ -459,7 +459,14 @@ func (p DiggerPolicyChecker) CheckPlanPolicy(SCMrepository string, SCMOrganisati
 	}
 
 	ctx := context.Background()
-	slog.Debug("Evaluating plan policy", "policy", policy)
+	inputPretty, err := json.MarshalIndent(input, "", "  ")
+	if err != nil {
+		slog.Warn("Failed to marshal plan policy input", "error", err)
+		slog.Debug("Evaluating plan policy", "policy", policy, "input", input)
+	} else {
+		slog.Debug("Evaluating plan policy", "policy", policy, "input", inputPretty)
+	}
+
 
 	query, err := rego.New(
 		rego.Query("data.digger.deny"),
