@@ -215,13 +215,33 @@ func (svc GithubService) GetComments(prNumber int) ([]ci.Comment, error) {
 
 func (svc GithubService) GetApprovals(prNumber int) ([]string, error) {
 	reviews, _, err := svc.Client.PullRequests.ListReviews(context.Background(), svc.Owner, svc.RepoName, prNumber, &github.ListOptions{})
-	approvals := make([]string, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Track the latest review state per user
+	// GitHub returns reviews in chronological order, so later entries are more recent
+	// We need to consider the latest review state, not just any APPROVED review
+	latestReviewState := make(map[string]string)
 	for _, review := range reviews {
-		if *review.State == "APPROVED" {
-			approvals = append(approvals, *review.User.Login)
+		if review.User == nil || review.User.Login == nil || review.State == nil {
+			continue
+		}
+		// Skip COMMENTED reviews as they don't change approval status
+		if *review.State == "COMMENTED" {
+			continue
+		}
+		latestReviewState[*review.User.Login] = *review.State
+	}
+
+	// Collect users whose latest review state is APPROVED
+	approvals := make([]string, 0)
+	for user, state := range latestReviewState {
+		if state == "APPROVED" {
+			approvals = append(approvals, user)
 		}
 	}
-	return approvals, err
+	return approvals, nil
 }
 
 func (svc GithubService) EditComment(prNumber int, id string, comment string) error {
