@@ -1,0 +1,450 @@
+---
+title: "Environment Variables"
+description: "Reference for configuring OpenTaco services via environment variables"
+---
+
+<Note>
+  Variables marked as **Required** must be set for the service to function. Optional variables have sensible defaults.
+</Note>
+
+---
+
+## OpenTaco/Statesman (State Backend)
+
+The state backend service manages Terraform state storage and querying.
+
+### Server Configuration
+
+<ParamField path="OPENTACO_PORT" type="string" default="8080">
+  HTTP server port
+</ParamField>
+
+<ParamField path="OPENTACO_HOST" type="string" default="0.0.0.0">
+  HTTP server bind address
+</ParamField>
+
+<ParamField path="OPENTACO_LOG_LEVEL" type="string" default="info">
+  Logging level: `debug`, `info`, `warn`, or `error`
+</ParamField>
+
+<ParamField path="OPENTACO_ENABLE_INTERNAL_ENDPOINTS" type="boolean" default="false">
+  Enable internal management endpoints
+</ParamField>
+
+### Storage Backend
+
+<ParamField path="OPENTACO_STORAGE" type="string" default="memory">
+  State file storage type. Options: `memory` (non-persistent) or `s3`
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="S3 Storage Configuration">
+    Required when `OPENTACO_STORAGE=s3`
+
+    <ParamField path="OPENTACO_S3_BUCKET" type="string" required>
+      S3 bucket name for state storage
+    </ParamField>
+
+    <ParamField path="OPENTACO_S3_REGION" type="string" required>
+      AWS region for S3 bucket
+    </ParamField>
+
+    <ParamField path="OPENTACO_S3_PREFIX" type="string">
+      Key prefix for state files in S3
+    </ParamField>
+
+    <ParamField path="AWS_ACCESS_KEY_ID" type="string">
+      AWS access key (or use IAM role)
+    </ParamField>
+
+    <ParamField path="AWS_SECRET_ACCESS_KEY" type="string">
+      AWS secret key (or use IAM role)
+    </ParamField>
+
+    <ParamField path="AWS_REGION" type="string">
+      AWS region (alternative to S3_REGION)
+    </ParamField>
+
+    <ParamField path="AWS_ENDPOINT" type="string">
+      Custom S3-compatible endpoint URL
+    </ParamField>
+
+    <ParamField path="AWS_SDK_LOAD_CONFIG" type="boolean">
+      Load AWS config from default locations
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+### Query Backend
+
+<ParamField path="OPENTACO_QUERY_BACKEND" type="string" default="sqlite">
+  Database type for state queries. Options: `sqlite`, `postgres`, `mysql`, `mssql`
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="SQLite Configuration">
+    Used when `OPENTACO_QUERY_BACKEND=sqlite`
+
+    <ParamField path="OPENTACO_SQLITE_DB_PATH" type="string" default="./data/taco.db">
+      SQLite database file path
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_CACHE" type="string" default="shared">
+      SQLite cache mode
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_BUSY_TIMEOUT" type="string" default="5s">
+      Busy timeout duration
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_MAX_OPEN_CONNS" type="number" default="25">
+      Maximum open connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_MAX_IDLE_CONNS" type="number" default="10">
+      Maximum idle connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_CONN_MAX_LIFETIME" type="string" default="300s">
+      Connection max lifetime
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_CONN_MAX_IDLE_TIME" type="string" default="600s">
+      Connection max idle time
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_PRAGMA_JOURNAL_MODE" type="string" default="WAL">
+      SQLite journal mode
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_PRAGMA_FOREIGN_KEYS" type="string" default="ON">
+      Foreign keys enforcement
+    </ParamField>
+
+    <ParamField path="OPENTACO_SQLITE_PRAGMA_BUSY_TIMEOUT" type="number" default="5000">
+      Busy timeout in milliseconds
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="PostgreSQL Configuration">
+    Used when `OPENTACO_QUERY_BACKEND=postgres`
+
+    <ParamField path="OPENTACO_POSTGRES_HOST" type="string" default="localhost" required>
+      PostgreSQL server host
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_PORT" type="number" default="5432">
+      PostgreSQL server port
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_USER" type="string" default="postgres" required>
+      Database username
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_PASSWORD" type="string" required>
+      Database password
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_DBNAME" type="string" default="taco">
+      Database name
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_SSLMODE" type="string" default="disable">
+      SSL mode: `disable`, `require`, `verify-ca`, or `verify-full`
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_MAX_OPEN_CONNS" type="number" default="25">
+      Maximum open connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_MAX_IDLE_CONNS" type="number" default="10">
+      Maximum idle connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_CONN_MAX_LIFETIME" type="string" default="300s">
+      Connection max lifetime
+    </ParamField>
+
+    <ParamField path="OPENTACO_POSTGRES_CONN_MAX_IDLE_TIME" type="string" default="600s">
+      Connection max idle time
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="MySQL Configuration">
+    Used when `OPENTACO_QUERY_BACKEND=mysql`
+
+    <ParamField path="OPENTACO_MYSQL_HOST" type="string" default="localhost" required>
+      MySQL server host
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_PORT" type="number" default="3306">
+      MySQL server port
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_USER" type="string" default="root" required>
+      Database username
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_PASSWORD" type="string" required>
+      Database password
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_DBNAME" type="string" default="taco">
+      Database name
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_CHARSET" type="string" default="utf8mb4">
+      Character set
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_MAX_OPEN_CONNS" type="number" default="25">
+      Maximum open connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_MAX_IDLE_CONNS" type="number" default="10">
+      Maximum idle connections
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_CONN_MAX_LIFETIME" type="string" default="300s">
+      Connection max lifetime
+    </ParamField>
+
+    <ParamField path="OPENTACO_MYSQL_CONN_MAX_IDLE_TIME" type="string" default="600s">
+      Connection max idle time
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="MSSQL Configuration">
+    Used when `OPENTACO_QUERY_BACKEND=mssql`
+
+    <ParamField path="OPENTACO_MSSQL_HOST" type="string" default="localhost" required>
+      MSSQL server host
+    </ParamField>
+
+    <ParamField path="OPENTACO_MSSQL_PORT" type="number" default="1433">
+      MSSQL server port
+    </ParamField>
+
+    <ParamField path="OPENTACO_MSSQL_USER" type="string" required>
+      Database username
+    </ParamField>
+
+    <ParamField path="OPENTACO_MSSQL_PASSWORD" type="string" required>
+      Database password
+    </ParamField>
+
+    <ParamField path="OPENTACO_MSSQL_DBNAME" type="string" default="taco">
+      Database name
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+### Authentication
+
+<ParamField path="OPENTACO_AUTH_DISABLE" type="boolean" default="false">
+  Disable authentication (not recommended for production)
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="OIDC/OAuth Configuration">
+    <ParamField path="OPENTACO_AUTH_ISSUER" type="string">
+      OIDC issuer URL
+    </ParamField>
+
+    <ParamField path="OPENTACO_AUTH_CLIENT_ID" type="string">
+      OIDC client ID
+    </ParamField>
+
+    <ParamField path="OPENTACO_AUTH_CLIENT_SECRET" type="string">
+      OIDC client secret
+    </ParamField>
+
+    <ParamField path="OPENTACO_AUTH_AUTH_URL" type="string">
+      OIDC authorization URL
+    </ParamField>
+
+    <ParamField path="OPENTACO_AUTH_TOKEN_URL" type="string">
+      OIDC token URL
+    </ParamField>
+
+    <ParamField path="OPENTACO_AUTH_DEV_SKIP_VERIFY" type="boolean" default="false">
+      Skip OIDC verification (development only)
+    </ParamField>
+
+    <ParamField path="OPENTACO_OAUTH_STATE_KEY" type="string">
+      32+ character encryption key for OAuth state (required for PKCE flow)
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="JWT Configuration">
+    <ParamField path="OPENTACO_TOKENS_KID" type="string" default="k1">
+      JWT Key ID
+    </ParamField>
+
+    <ParamField path="OPENTACO_TOKENS_PRIVATE_KEY_PEM_PATH" type="string">
+      Path to Ed25519 private key PEM file for signing JWTs
+    </ParamField>
+
+    <ParamField path="OPENTACO_TOKENS_ACCESS_TTL" type="string" default="1h">
+      Access token lifetime
+    </ParamField>
+
+    <ParamField path="OPENTACO_TOKENS_REFRESH_TTL" type="string" default="720h">
+      Refresh token lifetime (30 days)
+    </ParamField>
+
+    <ParamField path="OPENTACO_PUBLIC_BASE_URL" type="string">
+      Public base URL for JWT issuer claim
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+### Sandbox Execution
+
+<ParamField path="OPENTACO_SANDBOX_PROVIDER" type="string" default="none">
+  Sandbox provider for remote execution. Options: `e2b` or `none`
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="E2B Sandbox Configuration">
+    Required when `OPENTACO_SANDBOX_PROVIDER=e2b`
+
+    <ParamField path="OPENTACO_E2B_SIDECAR_URL" type="string" required>
+      E2B sidecar service URL (e.g., `http://sidecar:9100`)
+    </ParamField>
+
+    <ParamField path="OPENTACO_E2B_POLL_INTERVAL" type="string" default="5s">
+      Polling interval for sandbox status
+    </ParamField>
+
+    <ParamField path="OPENTACO_E2B_POLL_TIMEOUT" type="string" default="30m">
+      Maximum time to poll for results
+    </ParamField>
+
+    <ParamField path="OPENTACO_E2B_HTTP_TIMEOUT" type="string" default="60s">
+      HTTP request timeout for E2B API
+    </ParamField>
+  </Accordion>
+</AccordionGroup>
+
+
+---
+
+
+### Database
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string (e.g., `postgres://user:password@host:5432/dbname?sslmode=disable`)
+</ParamField>
+
+### GitHub App Integration
+
+<ParamField path="GITHUB_APP_ID" type="string" required>
+  GitHub App ID from app settings
+</ParamField>
+
+<ParamField path="GITHUB_APP_CLIENT_ID" type="string" required>
+  GitHub App client ID
+</ParamField>
+
+<ParamField path="GITHUB_APP_CLIENT_SECRET" type="string" required>
+  GitHub App client secret
+</ParamField>
+
+<ParamField path="GITHUB_APP_PRIVATE_KEY_BASE64" type="string" required>
+  Base64-encoded GitHub App private key
+</ParamField>
+
+<ParamField path="GITHUB_APP_PRIVATE_KEY" type="string">
+  Raw GitHub App private key (alternative to BASE64 version)
+</ParamField>
+
+<ParamField path="GITHUB_WEBHOOK_SECRET" type="string" required>
+  Webhook secret for verifying GitHub webhook signatures
+</ParamField>
+
+<ParamField path="GITHUB_ORG" type="string">
+  Restrict to specific GitHub organization
+</ParamField>
+
+<ParamField path="GITHUB_PAT_TOKEN" type="string">
+  GitHub Personal Access Token (for additional API access)
+</ParamField>
+
+
+
+## Sandbox Sidecar (E2B)
+
+Provides sandboxed execution environment for Terraform operations.
+
+<ParamField path="PORT" type="number" default="9100">
+  HTTP server port
+</ParamField>
+
+<ParamField path="SANDBOX_RUNNER" type="string" required>
+  Must be set to `e2b`
+</ParamField>
+
+<ParamField path="E2B_API_KEY" type="string" required>
+  E2B API key for authentication
+</ParamField>
+
+<ParamField path="E2B_BAREBONES_TEMPLATE_ID" type="string" required>
+  E2B template ID for runtime environment
+</ParamField>
+
+---
+
+## UI/Frontend Service
+
+Web interface for OpenTaco.
+
+### WorkOS Authentication
+
+<ParamField path="WORKOS_CLIENT_ID" type="string" required>
+  WorkOS client ID
+</ParamField>
+
+<ParamField path="WORKOS_API_KEY" type="string" required>
+  WorkOS API key
+</ParamField>
+
+<ParamField path="WORKOS_REDIRECT_URI" type="string" required>
+  OAuth redirect URI (e.g., `http://localhost:3000/api/auth/callback`)
+</ParamField>
+
+<ParamField path="WORKOS_COOKIE_PASSWORD" type="string" required>
+  Cookie encryption password (minimum 32 characters)
+</ParamField>
+
+<ParamField path="WORKOS_WEBHOOK_SECRET" type="string">
+  WorkOS webhook secret for verification
+</ParamField>
+
+
+## Database Services
+
+### PostgreSQL
+
+When using the bundled PostgreSQL container:
+
+<ParamField path="POSTGRES_USER" type="string" default="digger">
+  Database username
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" required>
+  Database password
+</ParamField>
+
+<ParamField path="POSTGRES_DB" type="string" default="digger">
+  Database name
+</ParamField>
+
+
+
+## See Also
+
+- [Self-host with Docker](/ce/self-host/deploy-docker)
+- [Self-host with Docker Compose](/ce/self-host/deploy-docker-compose)
+- [Self-host with Helm](/ce/self-host/deploy-helm)
+- [Authentication Methods](/ce/self-host/auth-methods)

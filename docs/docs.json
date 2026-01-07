@@ -147,7 +147,8 @@
               "ce/reference/action-inputs",
               "ce/reference/api",
               "ce/reference/terraform.lock",
-              "ce/reference/comment-args"
+              "ce/reference/comment-args",
+              "ce/reference/environment-variables"
             ]
           },
           {
