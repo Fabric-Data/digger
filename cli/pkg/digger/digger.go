@@ -105,7 +105,7 @@ func RunJobs(jobs []orchestrator.Job, prService ci.PullRequestService, orgServic
 
 			if !allowedToPerformCommand {
 				msg := reportPolicyError(job.ProjectName, command, job.RequestedBy, reporter)
-				slog.Warn("Skipping command ... %v for project %v", command, job.ProjectName)
+				slog.Warn("Skipping command ...", "command", command, "projectName", job.ProjectName)
 				slog.Warn("Received policy error", "message", msg)
 				appliesPerProject[job.ProjectName] = false
 				continue
@@ -425,6 +425,71 @@ func run(command string, job orchestrator.Job, policyChecker policy.Checker, org
 			}
 			if !allowedToApply {
 				msg := reportPolicyError(job.ProjectName, command, requestedBy, reporter)
+				slog.Error(msg)
+				return nil, msg, errors.New(msg)
+			}
+
+			// Check apply policy before apply
+			// Try to retrieve the terraform plan JSON if plan storage is configured
+			var terraformPlanJson string
+			if os.Getenv("PLAN_UPLOAD_DESTINATION") != "" {
+				slog.Debug("Plan storage configured, attempting to retrieve plan for apply policy check")
+				retrievedPlanJson, err := executor.RetrievePlanJson()
+				if err != nil {
+					slog.Warn("Failed to retrieve plan JSON for apply policy check, proceeding without plan data", "error", err)
+				} else {
+					terraformPlanJson = retrievedPlanJson
+					slog.Debug("Successfully retrieved plan JSON for apply policy check", "planLength", len(terraformPlanJson))
+				}
+			} else {
+				slog.Debug("Plan storage not configured, apply policy will not have terraform plan data")
+			}
+
+			slog.Debug("Calling CheckApplyPolicy",
+				"organisation", SCMOrganisation,
+				"repository", SCMrepository,
+				"projectName", job.ProjectName,
+				"projectDir", job.ProjectDir,
+				"command", command,
+				"requestedBy", requestedBy,
+				"hasTerraformPlan", terraformPlanJson != "")
+			allowedToApplyByApplyPolicy, applyPolicyViolations, err := policyChecker.CheckApplyPolicy(SCMOrganisation, SCMrepository, job.ProjectName, job.ProjectDir, command, job.PullRequestNumber, requestedBy, teams, approvals, approvalTeams, planPolicyViolations, terraformPlanJson)
+			slog.Debug("CheckApplyPolicy result",
+				"allowed", allowedToApplyByApplyPolicy,
+				"violationsCount", len(applyPolicyViolations),
+				"violations", applyPolicyViolations,
+				"error", err)
+			if err != nil {
+				msg := fmt.Sprintf("Failed to run apply policy check before apply. %v", err)
+				slog.Error("Failed to run apply policy check before apply", "error", err)
+				return nil, msg, fmt.Errorf("%s", msg)
+			}
+			if !allowedToApplyByApplyPolicy {
+				slog.Info("Apply policy check denied",
+					"violationsCount", len(applyPolicyViolations),
+					"violations", applyPolicyViolations)
+				var applyPolicyFormatter func(report string) string
+				summary := fmt.Sprintf("Policy violation for <b>%v - %v</b>", job.ProjectName, command)
+				if reporter.SupportsMarkdown() {
+					applyPolicyFormatter = reporting.AsCollapsibleComment(summary, false)
+				} else {
+					applyPolicyFormatter = reporting.AsComment(summary)
+				}
+
+				applyPolicyReportMessage := "Terraform apply failed validation checks :x:<br>"
+				if len(applyPolicyViolations) > 0 {
+					preformattedMessages := make([]string, 0)
+					for _, message := range applyPolicyViolations {
+						preformattedMessages = append(preformattedMessages, fmt.Sprintf("    %v", message))
+					}
+					applyPolicyReportMessage = applyPolicyReportMessage + strings.Join(preformattedMessages, "<br>")
+				}
+				_, _, err = reporter.Report(applyPolicyReportMessage, applyPolicyFormatter)
+				if err != nil {
+					slog.Error("Failed to report apply policy violation.", "error", err)
+				}
+
+				msg := fmt.Sprintf("Apply is not allowed due to policy violations")
 				slog.Error(msg)
 				return nil, msg, errors.New(msg)
 			}

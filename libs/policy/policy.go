@@ -42,6 +42,10 @@ func (p NoOpPolicyChecker) CheckDriftPolicy(SCMOrganisation string, SCMrepositor
 	return true, nil
 }
 
+func (p NoOpPolicyChecker) CheckApplyPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string, planOutput string) (bool, []string, error) {
+	return true, nil, nil
+}
+
 func getAccessPolicyForOrganisation(p *DiggerHttpPolicyProvider) (string, *http.Response, error) {
 	organisation := p.DiggerOrganisation
 	u, err := url.Parse(p.DiggerHost)
@@ -132,6 +136,36 @@ func getDriftPolicyForOrganisation(p *DiggerHttpPolicyProvider) (string, *http.R
 	return string(body), resp, nil
 }
 
+func getApplyPolicyForOrganisation(p *DiggerHttpPolicyProvider) (string, *http.Response, error) {
+	organisation := p.DiggerOrganisation
+	u, err := url.Parse(p.DiggerHost)
+	if err != nil {
+		slog.Error("Failed to parse digger cloud URL", "url", p.DiggerHost, "error", err)
+		return "", nil, fmt.Errorf("not able to parse digger cloud url: %v", err)
+	}
+	u.Path = "/orgs/" + organisation + "/apply-policy"
+
+	slog.Debug("Fetching org apply policy", "organisation", organisation, "url", u.String())
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return "", nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+p.AuthToken)
+
+	resp, err := p.HttpClient.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", resp, nil
+	}
+	return string(body), resp, nil
+}
+
 func getAccessPolicyForNamespace(p *DiggerHttpPolicyProvider, namespace string, projectName string) (string, *http.Response, error) {
 	// fetch RBAC policies for project from Digger API
 	u, err := url.Parse(p.DiggerHost)
@@ -175,6 +209,39 @@ func getPlanPolicyForNamespace(p *DiggerHttpPolicyProvider, namespace string, pr
 	u.Path = "/repos/" + namespace + "/projects/" + projectName + "/plan-policy"
 
 	slog.Debug("Fetching namespace plan policy",
+		"namespace", namespace,
+		"projectName", projectName,
+		"url", u.String())
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+
+	if err != nil {
+		return "", nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+p.AuthToken)
+
+	resp, err := p.HttpClient.Do(req)
+	if err != nil {
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", resp, nil
+	}
+	return string(body), resp, nil
+}
+
+func getApplyPolicyForNamespace(p *DiggerHttpPolicyProvider, namespace string, projectName string) (string, *http.Response, error) {
+	u, err := url.Parse(p.DiggerHost)
+	if err != nil {
+		slog.Error("Failed to parse digger cloud URL", "url", p.DiggerHost, "error", err)
+		return "", nil, fmt.Errorf("not able to parse digger cloud url: %v", err)
+	}
+	u.Path = "/repos/" + namespace + "/projects/" + projectName + "/apply-policy"
+
+	slog.Debug("Fetching namespace apply policy",
 		"namespace", namespace,
 		"projectName", projectName,
 		"url", u.String())
@@ -331,6 +398,61 @@ func (p DiggerHttpPolicyProvider) GetDriftPolicy() (string, error) {
 			"statusCode", resp.StatusCode,
 			"response", content)
 		return "", errors.New(fmt.Sprintf("unexpected response while fetching organisation policy: %v, code %v", content, resp.StatusCode))
+	}
+}
+
+func (p DiggerHttpPolicyProvider) GetApplyPolicy(organisation string, repo string, projectName string, projectDir string) (string, error) {
+	namespace := fmt.Sprintf("%v-%v", organisation, repo)
+
+	slog.Debug("Getting apply policy",
+		"organisation", organisation,
+		"repo", repo,
+		"projectName", projectName,
+		"projectDir", projectDir)
+
+	content, resp, err := getApplyPolicyForNamespace(&p, namespace, projectName)
+	if err != nil {
+		slog.Error("Failed to fetch apply policy for namespace",
+			"namespace", namespace,
+			"error", err)
+		return "", err
+	}
+
+	// project policy found
+	if resp.StatusCode == 200 && content != "" {
+		slog.Debug("Found project apply policy", "namespace", namespace, "projectName", projectName)
+		return content, nil
+	}
+
+	// check if project policy was empty or not found (retrieve org policy if so)
+	if (resp.StatusCode == 200 && content == "") || resp.StatusCode == 404 {
+		slog.Debug("Project apply policy not found, falling back to org policy",
+			"organisation", organisation)
+
+		content, resp, err := getApplyPolicyForOrganisation(&p)
+		if err != nil {
+			slog.Error("Failed to fetch apply policy for organisation",
+				"organisation", organisation,
+				"error", err)
+			return "", err
+		}
+		if resp.StatusCode == 200 {
+			slog.Debug("Found organisation apply policy", "organisation", organisation)
+			return content, nil
+		} else if resp.StatusCode == 404 {
+			slog.Debug("Organisation apply policy not found", "organisation", organisation)
+			return "", nil
+		} else {
+			slog.Error("Unexpected response for organisation policy",
+				"statusCode", resp.StatusCode,
+				"response", content)
+			return "", errors.New(fmt.Sprintf("unexpected response while fetching organisation policy: %v, code %v", content, resp.StatusCode))
+		}
+	} else {
+		slog.Error("Unexpected response for project policy",
+			"statusCode", resp.StatusCode,
+			"response", content)
+		return "", errors.New(fmt.Sprintf("unexpected response while fetching project policy: %v code %v", content, resp.StatusCode))
 	}
 }
 
@@ -583,6 +705,133 @@ func (p DiggerPolicyChecker) CheckDriftPolicy(SCMOrganisation string, SCMreposit
 		"organisation", SCMOrganisation,
 		"project", projectName)
 	return true, nil
+}
+
+func (p DiggerPolicyChecker) CheckApplyPolicy(SCMOrganisation string, SCMrepository string, projectName string, projectDir string, command string, prNumber *int, requestedBy string, teams []string, approvals []string, approvalTeams []string, planPolicyViolations []string, planOutput string) (bool, []string, error) {
+	slog.Debug("Checking apply policy",
+		"organisation", SCMOrganisation,
+		"repository", SCMrepository,
+		"project", projectName,
+		"command", command,
+		"requestedBy", requestedBy,
+		"hasPlanOutput", planOutput != "")
+
+	policy, err := p.PolicyProvider.GetApplyPolicy(SCMOrganisation, SCMrepository, projectName, projectDir)
+
+	if err != nil {
+		slog.Error("Error fetching apply policy", "error", err)
+		return false, nil, err
+	}
+
+	input := map[string]interface{}{
+		"user":                 requestedBy,
+		"organisation":         SCMOrganisation,
+		"teams":                teams,
+		"approvals":            approvals,
+		"approval_teams":       approvalTeams,
+		"planPolicyViolations": planPolicyViolations,
+		"action":               command,
+		"project":              projectName,
+	}
+
+	// Include terraform plan JSON if available
+	if planOutput != "" {
+		slog.Debug("Parsing terraform plan for apply policy", "planLength", len(planOutput))
+		var tfplan map[string]interface{}
+		err := json.Unmarshal([]byte(planOutput), &tfplan)
+		if err != nil {
+			slog.Error("Failed to parse terraform plan JSON for apply policy", "error", err)
+			// Don't fail the policy check, just proceed without plan data
+		} else {
+			input["terraform"] = tfplan
+			slog.Debug("Terraform plan included in apply policy input",
+				"hasResourceChanges", tfplan["resource_changes"] != nil)
+		}
+	} else {
+		slog.Debug("No terraform plan available for apply policy check")
+	}
+
+	if policy == "" {
+		slog.Debug("No apply policy found, allowing action")
+		return true, nil, nil
+	}
+
+	ctx := context.Background()
+	slog.Debug("Evaluating apply policy",
+		"input", input,
+		"policy", policy)
+
+	query, err := rego.New(
+		rego.Query("data.digger.deny"),
+		rego.Module("digger", policy),
+	).PrepareForEval(ctx)
+
+	if err != nil {
+		slog.Error("Failed to prepare apply policy evaluation", "error", err)
+		return false, nil, err
+	}
+
+	results, err := query.Eval(ctx, rego.EvalInput(input))
+	slog.Debug("OPA evaluation completed",
+		"resultsCount", len(results),
+		"error", err)
+
+	if len(results) == 0 || len(results[0].Expressions) == 0 {
+		slog.Error("No result found from apply policy evaluation")
+		return false, nil, fmt.Errorf("no result found")
+	}
+
+	expressions := results[0].Expressions
+	slog.Debug("Processing expressions from OPA results",
+		"expressionCount", len(expressions))
+
+	decisionsResult := make([]string, 0)
+	for i, expression := range expressions {
+		slog.Debug("Processing expression",
+			"index", i,
+			"valueType", fmt.Sprintf("%T", expression.Value),
+			"value", expression.Value)
+
+		decisions, ok := expression.Value.([]interface{})
+
+		if !ok {
+			slog.Error("Apply policy decision is not a slice of interfaces",
+				"actualType", fmt.Sprintf("%T", expression.Value))
+			return false, nil, fmt.Errorf("decision is not a slice of interfaces")
+		}
+
+		slog.Debug("Decisions array received",
+			"decisionsCount", len(decisions))
+
+		if len(decisions) > 0 {
+			for j, d := range decisions {
+				decisionStr := d.(string)
+				decisionsResult = append(decisionsResult, decisionStr)
+				slog.Info("Apply policy violation found",
+					"index", j,
+					"reason", decisionStr)
+			}
+		}
+	}
+
+	slog.Debug("Final decisions result",
+		"totalViolations", len(decisionsResult),
+		"violations", decisionsResult)
+
+	if len(decisionsResult) > 0 {
+		slog.Info("Apply policy check failed",
+			"violations", len(decisionsResult),
+			"organisation", SCMOrganisation,
+			"repository", SCMrepository,
+			"project", projectName)
+		return false, decisionsResult, nil
+	}
+
+	slog.Info("Apply policy allowed action",
+		"user", requestedBy,
+		"action", command,
+		"project", projectName)
+	return true, []string{}, nil
 }
 
 func NewPolicyChecker(hostname string, organisationName string, authToken string) Checker {
