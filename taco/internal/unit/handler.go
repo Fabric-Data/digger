@@ -149,6 +149,18 @@ func (h *Handler) CreateUnit(c echo.Context) error {
 				"detail": fmt.Sprintf("A unit with name '%s' already exists in this organization", name),
 			})
 		}
+		if err == storage.ErrForbidden {
+			logger.Warn("Permission denied to create unit",
+				"operation", "create_unit",
+				"name", name,
+				"org_id", orgCtx.OrgID,
+			)
+			analytics.SendEssential("unit_create_failed_forbidden")
+			return c.JSON(http.StatusForbidden, map[string]string{
+				"error": "Permission denied",
+				"detail": "You don't have permission to create units. Contact your administrator to request access.",
+			})
+		}
 		logger.Error("Failed to create unit",
 			"operation", "create_unit",
 			"name", name,
