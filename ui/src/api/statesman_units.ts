@@ -202,7 +202,11 @@ export async function createUnit(
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to create unit: ${response.statusText}`);
+        const errorBody = await response.json().catch(() => ({}));
+        if (response.status === 403) {
+            throw new Error(errorBody.detail || "You don't have permission to create units. Contact your administrator to request access.");
+        }
+        throw new Error(errorBody.detail || errorBody.error || `Failed to create unit: ${response.statusText}`);
     }
 
     return response.json();
