@@ -44,19 +44,49 @@ type GithubService struct {
 }
 
 func (svc GithubService) GetUserTeams(organisation string, user string) ([]string, error) {
-	teamsResponse, _, err := svc.Client.Teams.ListTeams(context.Background(), organisation, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list github teams: %v", err)
-	}
 	var teams []string
-	for _, team := range teamsResponse {
-		teamMembers, _, _ := svc.Client.Teams.ListTeamMembersBySlug(context.Background(), organisation, *team.Slug, nil)
-		for _, member := range teamMembers {
-			if *member.Login == user {
-				teams = append(teams, *team.Name)
-				break
+
+	// Paginate through all teams
+	opts := &github.ListOptions{PerPage: 100}
+	for {
+		teamsResponse, resp, err := svc.Client.Teams.ListTeams(context.Background(), organisation, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list github teams: %v", err)
+		}
+
+		for _, team := range teamsResponse {
+			// Paginate through all team members
+			memberOpts := &github.TeamListTeamMembersOptions{
+				ListOptions: github.ListOptions{PerPage: 100},
+			}
+		memberLoop:
+			for {
+				teamMembers, memberResp, err := svc.Client.Teams.ListTeamMembersBySlug(
+					context.Background(), organisation, *team.Slug, memberOpts)
+				if err != nil {
+					// Log error but continue with other teams
+					slog.Warn("failed to list team members", "team", *team.Slug, "error", err)
+					break
+				}
+
+				for _, member := range teamMembers {
+					if *member.Login == user {
+						teams = append(teams, *team.Name)
+						break memberLoop // Found user, move to next team
+					}
+				}
+
+				if memberResp.NextPage == 0 {
+					break
+				}
+				memberOpts.Page = memberResp.NextPage
 			}
 		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
 	}
 
 	return teams, nil
