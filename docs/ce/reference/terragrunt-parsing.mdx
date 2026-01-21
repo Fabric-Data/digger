@@ -1,0 +1,215 @@
+---
+title: "Terragrunt Parsing"
+description: "Reference for configuring Terragrunt project generation parsing options"
+---
+
+<Note>
+  The `terragrunt_parsing` configuration is used within `generate_projects` or individual `blocks` to control how Digger discovers and generates projects from Terragrunt configurations.
+</Note>
+
+When using Digger with Terragrunt, you can configure how projects are parsed and generated using the `terragrunt_parsing` key. This is available at both the `generate_projects` level and within individual `blocks`.
+
+```yml
+generate_projects:
+  terragrunt: true
+  terragrunt_parsing:
+    autoPlan: true
+    autoMerge: false
+    createParentProject: false
+    ignoreDependencyBlocks: false
+    cascadeDependencies: true
+```
+
+---
+
+## Configuration Options
+
+### Directory and Path Options
+
+<ParamField path="gitRoot" type="string">
+  The root directory of the git repository. Used as the base path for relative directory calculations.
+</ParamField>
+
+<ParamField path="outputPath" type="string">
+  Path where the generated configuration will be written.
+</ParamField>
+
+<ParamField path="filterPaths" type="array">
+  List of paths to filter when scanning for Terragrunt configurations. Only directories matching these paths will be processed.
+</ParamField>
+
+<ParamField path="projectHclFiles" type="array">
+  List of HCL file patterns to identify as project files (e.g., `["terragrunt.hcl"]`).
+</ParamField>
+
+### Project Generation Options
+
+<ParamField path="autoPlan" type="boolean" default="false">
+  Automatically run `digger plan` when changes are detected in the project.
+</ParamField>
+
+<ParamField path="autoMerge" type="boolean" default="false">
+  Automatically merge pull requests when all checks pass.
+</ParamField>
+
+<ParamField path="createParentProject" type="boolean" default="false">
+  Create a parent project that encompasses child Terragrunt modules.
+</ParamField>
+
+<ParamField path="createWorkspace" type="boolean" default="false">
+  Create a Terraform workspace for each generated project.
+</ParamField>
+
+<ParamField path="createProjectName" type="boolean" default="false">
+  Automatically generate project names based on the directory structure.
+</ParamField>
+
+<ParamField path="projectAliasDelimiter" type="string">
+  Delimiter used when generating project aliases from directory paths (e.g., `-`, `_`, `/`).
+</ParamField>
+
+<ParamField path="createHclProjectChilds" type="boolean" default="false">
+  Create child projects from HCL configurations found within parent directories.
+</ParamField>
+
+<ParamField path="createHclProjectExternalChilds" type="boolean">
+  Create child projects from external HCL configurations referenced by the parent.
+</ParamField>
+
+<ParamField path="useProjectMarkers" type="boolean" default="false">
+  Use marker files to identify which directories should be treated as projects.
+</ParamField>
+
+### Dependency Options
+
+<ParamField path="ignoreDependencyBlocks" type="boolean" default="false">
+  Ignore Terragrunt `dependency` blocks when determining project relationships.
+</ParamField>
+
+<ParamField path="ignoreParentTerragrunt" type="boolean">
+  Ignore parent `terragrunt.hcl` files when parsing configurations.
+</ParamField>
+
+<ParamField path="cascadeDependencies" type="boolean">
+  When a project is modified, also trigger dependent projects. Enables cascading changes through the dependency graph.
+</ParamField>
+
+<ParamField path="dependsOnOrdering" type="boolean">
+  Use the `depends_on` ordering from Terragrunt to determine execution order.
+</ParamField>
+
+<ParamField path="triggerProjectsFromDirOnly" type="boolean" default="false">
+  Only trigger projects based on directory changes, ignoring dependency relationships.
+</ParamField>
+
+### Execution Options
+
+<ParamField path="parallel" type="boolean">
+  Enable parallel execution of independent Terragrunt projects.
+</ParamField>
+
+<ParamField path="executionOrderGroups" type="boolean">
+  Group projects by execution order for batched processing.
+</ParamField>
+
+### Default Values
+
+<ParamField path="defaultTerraformVersion" type="string">
+  Default Terraform version to use for generated projects.
+</ParamField>
+
+<ParamField path="defaultWorkflow" type="string">
+  Default workflow name to assign to generated projects.
+</ParamField>
+
+<ParamField path="defaultApplyRequirements" type="array">
+  Default apply requirements for generated projects (e.g., `["mergeable"]`).
+</ParamField>
+
+<ParamField path="workflow_file" type="string">
+  GitHub Actions workflow file to use for generated projects.
+</ParamField>
+
+### Preservation Options
+
+<ParamField path="preserveWorkflows" type="boolean">
+  Preserve existing workflow configurations when regenerating projects.
+</ParamField>
+
+<ParamField path="preserveProjects" type="boolean" default="false">
+  Preserve existing project configurations when regenerating.
+</ParamField>
+
+### AWS Configuration
+
+<ParamField path="aws_role_to_assume" type="object">
+  Default AWS role configuration for all generated Terragrunt projects. See [AWS Role Configuration](/ce/reference/digger.yml#aws-role-configuration).
+</ParamField>
+
+<ParamField path="aws_cognito_oidc" type="object">
+  Default AWS Cognito OIDC configuration for all generated Terragrunt projects. See [AWS Cognito OIDC Configuration](/ce/reference/digger.yml#aws-cognito-oidc-configuration).
+</ParamField>
+
+---
+
+## Example Configurations
+
+### Basic Terragrunt Setup
+
+```yml
+generate_projects:
+  terragrunt: true
+  blocks:
+    - block_name: infrastructure
+      terragrunt: true
+      root_dir: infrastructure
+      terragrunt_parsing:
+        autoPlan: true
+        cascadeDependencies: true
+```
+
+### Multi-environment Setup
+
+```yml
+generate_projects:
+  terragrunt: true
+  terragrunt_parsing:
+    autoPlan: true
+    autoMerge: false
+    createParentProject: false
+    ignoreDependencyBlocks: false
+    cascadeDependencies: true
+    defaultApplyRequirements: ["approved", "mergeable"]
+    defaultWorkflow: terragrunt-workflow
+    preserveProjects: true
+```
+
+### Advanced Configuration with Filtering
+
+```yml
+generate_projects:
+  terragrunt: true
+  terragrunt_parsing:
+    gitRoot: "."
+    filterPaths:
+      - "environments/production"
+      - "environments/staging"
+    projectHclFiles:
+      - "terragrunt.hcl"
+    autoPlan: true
+    cascadeDependencies: true
+    dependsOnOrdering: true
+    parallel: true
+    executionOrderGroups: true
+    createProjectName: true
+    projectAliasDelimiter: "-"
+```
+
+---
+
+## See Also
+
+- [digger.yml Reference](/ce/reference/digger.yml)
+- [Using Terragrunt](/ce/howto/using-terragrunt)
+- [Generate Projects](/ce/howto/generate-projects)
+- [Getting Started with Terragrunt](/ce/getting-started/with-terragrunt)
