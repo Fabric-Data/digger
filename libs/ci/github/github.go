@@ -551,6 +551,27 @@ func (svc GithubService) UpdateCheckRun(checkRunId string, options GithubCheckRu
 	return checkRun, err
 }
 
+func (svc GithubService) GetCheckRunsForCommit(commitSha string) ([]*github.CheckRun, error) {
+	ctx := context.Background()
+	client := svc.Client
+	owner := svc.Owner
+	repoName := svc.RepoName
+
+	opts := &github.ListCheckRunsOptions{
+		ListOptions: github.ListOptions{PerPage: 100},
+	}
+
+	checkRuns, _, err := client.Checks.ListCheckRunsForRef(ctx, owner, repoName, commitSha, opts)
+	if err != nil {
+		slog.Error("Failed to list check runs for commit",
+			"commitSha", commitSha,
+			"error", err)
+		return nil, err
+	}
+
+	return checkRuns.CheckRuns, nil
+}
+
 func (svc GithubService) GetCombinedPullRequestStatus(prNumber int) (string, error) {
 	pr, _, err := svc.Client.PullRequests.Get(context.Background(), svc.Owner, svc.RepoName, prNumber)
 	if err != nil {
