@@ -331,6 +331,18 @@ func SetPRCheckForJobs(ghService *github2.GithubService, prNumber int, jobs []sc
 				Id: strconv.FormatInt(*cr.ID, 10),
 				Url: GetCheckDetailedUrl(*cr.ID, repoOwner, repoName, prNumber),
 			}
+
+			// Also create the apply check in queued state for plan batches
+			// This will be automatically set to success if plan shows zero changes
+			slog.Debug("Setting aggregate apply status (queued) for plan batch", "prNumber", prNumber)
+			_, err = ghService.CreateCheckRun("digger/apply", "queued", "", "Waiting for plan to complete...", "The apply check will automatically succeed if there are no changes to apply", "", commitSha, nil)
+			if err != nil {
+				slog.Warn("Failed to create aggregate apply check run (queued) for plan batch",
+					"prNumber", prNumber,
+					"error", err,
+				)
+				// Don't fail the entire operation if apply check creation fails
+			}
 		} else {
 			slog.Debug("Setting aggregate apply status", "prNumber", prNumber)
 			cr, err = ghService.CreateCheckRun("digger/apply", "in_progress", "", "Pending start...", "", jobsSummaryTable, commitSha, nil)

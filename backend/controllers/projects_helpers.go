@@ -248,6 +248,72 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 				"checkRunId", *batch.CheckRunId,
 				"status", status)
 		}
+
+		// Check if plan batch succeeded with zero changes and auto-succeed the apply check
+		if batch.Status == orchestrator_scheduler.BatchJobSucceeded {
+			allJobsHaveZeroChanges := true
+			for _, job := range jobs {
+				if job.DiggerJobSummary.ResourcesCreated > 0 ||
+				   job.DiggerJobSummary.ResourcesUpdated > 0 ||
+				   job.DiggerJobSummary.ResourcesDeleted > 0 {
+					allJobsHaveZeroChanges = false
+					break
+				}
+			}
+
+			if allJobsHaveZeroChanges {
+				slog.Info("Plan batch completed with zero changes - auto-succeeding apply check",
+					"batchId", batch.ID,
+					"prNumber", batch.PrNumber,
+				)
+
+				// Find and update the digger/apply check to success
+				completedStatus := "completed"
+				successConclusion := "success"
+				applyTitle := "No changes to apply"
+				applySummary := "All plan jobs completed with zero changes. The apply check has been automatically set to succeeded."
+				applyMessage := "All terraform plans show no changes:\n\n" + message
+
+				applyOpts := github.GithubCheckRunUpdateOptions{
+					Status:     &completedStatus,
+					Conclusion: &successConclusion,
+					Title:      &applyTitle,
+					Summary:    &applySummary,
+					Text:       &applyMessage,
+					Actions:    nil, // No actions needed since there's nothing to apply
+				}
+
+				// Get the digger/apply check run for this commit and update it
+				// We need to find it by name since we don't store its ID
+				checkRuns, err := ghPrService.GetCheckRunsForCommit(batch.CommitSha)
+				if err != nil {
+					slog.Warn("Failed to get check runs for commit to update apply check",
+						"batchId", batch.ID,
+						"commitSha", batch.CommitSha,
+						"error", err,
+					)
+				} else {
+					for _, checkRun := range checkRuns {
+						if checkRun.GetName() == "digger/apply" {
+							_, err = ghPrService.UpdateCheckRun(fmt.Sprintf("%d", checkRun.GetID()), applyOpts)
+							if err != nil {
+								slog.Warn("Failed to auto-succeed apply check for zero-change plan",
+									"batchId", batch.ID,
+									"checkRunId", checkRun.GetID(),
+									"error", err,
+								)
+							} else {
+								slog.Info("Successfully auto-succeeded apply check for zero-change plan",
+									"batchId", batch.ID,
+									"checkRunId", checkRun.GetID(),
+								)
+							}
+							break
+						}
+					}
+				}
+			}
+		}
 	} else {
 		if disableDiggerApplyStatusCheck == false {
 			status := serializedBatch.ToCheckRunStatus()
