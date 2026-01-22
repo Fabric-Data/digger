@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: digger-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: digger
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - digger-network
+
+  # Backend API Service
+  backend:
+    container_name: digger-backend
+    build:
+      context: .
+      dockerfile: Dockerfile_backend
+      args:
+        COMMIT_SHA: local-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/digger?sslmode=disable
+      - PORT=3000
+      - ALLOW_DIRTY=true
+      # Add any other required env vars here
+      - GIN_MODE=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - digger-network
+    restart: unless-stopped
+
+  # UI Service
+  ui:
+    container_name: digger-ui
+    build:
+      context: .
+      dockerfile: Dockerfile_ui
+      args:
+        COMMIT_SHA: local-dev
+    ports:
+      - "3030:3030"
+    environment:
+      - NODE_ENV=development
+      - PORT=3030
+      - HOST=0.0.0.0
+      - ORCHESTRATOR_BACKEND_URL=http://backend:3000
+      - ORCHESTRATOR_BACKEND_SECRET=local-dev-secret
+      # WorkOS settings (optional for local dev)
+      - WORKOS_REDIRECT_URI=http://localhost:3030/api/auth/callback
+      - WORKOS_API_KEY=${WORKOS_API_KEY:-}
+      - WORKOS_CLIENT_ID=${WORKOS_CLIENT_ID:-}
+      - WORKOS_COOKIE_PASSWORD=${WORKOS_COOKIE_PASSWORD:-change-me-in-production}
+    depends_on:
+      - backend
+    networks:
+      - digger-network
+    restart: unless-stopped
+
+  # Drift Detection Service (optional)
+  drift:
+    container_name: digger-drift
+    build:
+      context: .
+      dockerfile: Dockerfile_drift
+      args:
+        COMMIT_SHA: local-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/digger?sslmode=disable
+      - GIN_MODE=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - digger-network
+    restart: unless-stopped
+    profiles:
+      - full  # Only starts when you use --profile full
+
+  # Background Projects Refresh Service (optional)
+  projects-refresh:
+    container_name: digger-projects-refresh
+    build:
+      context: .
+      dockerfile: Dockerfile_bg_projects_refresh
+      args:
+        COMMIT_SHA: local-dev
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/digger?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - digger-network
+    restart: unless-stopped
+    profiles:
+      - full  # Only starts when you use --profile full
+
+networks:
+  digger-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

@@ -1,0 +1,200 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║           🚀 DIGGER DOCKER COMPOSE - LOCAL DEVELOPMENT SETUP 🚀              ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📦 FILES CREATED:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. docker-compose.local.yml       Main Docker Compose configuration
+  2. QUICK_START_SUMMARY.md          Quick reference guide (READ THIS FIRST!)
+  3. DOCKER_QUICKSTART.md            Detailed documentation
+  4. .env.local.example              Environment variables template
+  5. Makefile.docker                 Convenient make commands
+  6. scripts/validate-docker-setup.sh Validation script
+
+
+🎯 QUICK START (Choose One):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Option A: Using Make (Easiest)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  make -f Makefile.docker up                                    │
+  └────────────────────────────────────────────────────────────────┘
+
+  Option B: Using Docker Compose
+  ┌────────────────────────────────────────────────────────────────┐
+  │  docker compose -f docker-compose.local.yml up                 │
+  └────────────────────────────────────────────────────────────────┘
+
+  Option C: With All Services (including drift, background jobs)
+  ┌────────────────────────────────────────────────────────────────┐
+  │  docker compose -f docker-compose.local.yml --profile full up  │
+  └────────────────────────────────────────────────────────────────┘
+
+
+🌐 ACCESS POINTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Web UI:        http://localhost:3030
+  Backend API:   http://localhost:3000
+  PostgreSQL:    localhost:5432
+                 └─ user: postgres
+                 └─ pass: postgres
+                 └─ db:   digger
+
+  Optional Services (--profile full):
+  Drift Service: http://localhost:3001
+
+
+📊 SERVICES ARCHITECTURE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    ┌─────────────────────┐
+    │   Browser           │
+    │                     │
+    └──────────┬──────────┘
+               │
+               │ :3030
+               ▼
+    ┌─────────────────────┐
+    │   UI Container      │
+    │   (Node.js/React)   │
+    └──────────┬──────────┘
+               │
+               │ :3000
+               ▼
+    ┌─────────────────────┐      ┌──────────────────────┐
+    │  Backend Container  │─────▶│  PostgreSQL          │
+    │  (Go/Gin API)       │      │  Container           │
+    └──────────┬──────────┘      │  :5432               │
+               │                 └──────────────────────┘
+               │
+               ▼
+    ┌─────────────────────┐
+    │  Drift Container    │ (Optional)
+    │  :3001              │
+    └─────────────────────┘
+
+
+💡 COMMON COMMANDS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Start Services:
+    make -f Makefile.docker up
+
+  View Logs:
+    make -f Makefile.docker logs
+    make -f Makefile.docker logs-backend
+    make -f Makefile.docker logs-ui
+
+  Stop Services:
+    make -f Makefile.docker down
+
+  Rebuild:
+    make -f Makefile.docker rebuild
+
+  Clean Everything (fresh start):
+    make -f Makefile.docker clean
+
+  Access Container Shell:
+    make -f Makefile.docker shell-backend
+    make -f Makefile.docker shell-postgres
+
+  Check Status:
+    make -f Makefile.docker status
+
+  See All Commands:
+    make -f Makefile.docker help
+
+
+🔍 VALIDATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Run this script to validate your setup before starting:
+  ┌────────────────────────────────────────────────────────────────┐
+  │  ./scripts/validate-docker-setup.sh                            │
+  └────────────────────────────────────────────────────────────────┘
+
+
+📚 DOCUMENTATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Quick Start:    QUICK_START_SUMMARY.md  ← Start here!
+  Full Guide:     DOCKER_QUICKSTART.md
+  Environment:    .env.local.example
+  Make Commands:  Makefile.docker
+
+
+⚙️ FEATURES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ Complete local development environment
+  ✅ PostgreSQL with automatic migrations
+  ✅ Backend API (Go/Gin)
+  ✅ UI Frontend (React/Node)
+  ✅ Optional drift detection
+  ✅ Optional background job processing
+  ✅ Health checks for all services
+  ✅ Persistent database storage
+  ✅ Hot reload support (with rebuild)
+  ✅ Networked containers
+  ✅ Easy cleanup and fresh starts
+
+
+⚠️  IMPORTANT NOTES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  🔴 LOCAL DEVELOPMENT ONLY - Not for production!
+  🔴 Uses weak passwords (postgres/postgres)
+  🔴 No SSL encryption
+  🔴 Migrations run automatically on backend startup
+  🔴 Data persists in Docker volumes
+
+
+🎯 NEXT STEPS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. Read QUICK_START_SUMMARY.md
+  2. Run: make -f Makefile.docker up
+  3. Open: http://localhost:3030
+  4. Develop: Make code changes and rebuild
+  5. Test: Your changes in the browser
+
+
+🐛 TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Port conflicts:
+    → Edit port mappings in docker-compose.local.yml
+
+  Database issues:
+    → docker compose -f docker-compose.local.yml logs postgres
+
+  Fresh start needed:
+    → make -f Makefile.docker clean
+    → make -f Makefile.docker up
+
+  See DOCKER_QUICKSTART.md for detailed troubleshooting
+
+
+🌟 PRODUCTION DEPLOYMENT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  For production deployments, see:
+    → https://docs.digger.dev/
+    → Use Kubernetes/Helm charts in helm-charts/
+    → Use proper secrets management
+    → Enable SSL/TLS
+    → Use strong passwords
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+  Questions? Join the Digger Community Slack:
+  https://bit.ly/diggercommunity
+
+  Happy Testing! 🚀
+
+═══════════════════════════════════════════════════════════════════════════════

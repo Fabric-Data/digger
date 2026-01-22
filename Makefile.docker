@@ -1,0 +1,101 @@
+# Makefile for Docker Compose Local Development
+.PHONY: help up down build logs clean restart status shell-backend shell-ui shell-postgres test-api
+
+# Default target
+help:
+	@echo "Digger Docker Compose Commands:"
+	@echo ""
+	@echo "  make up              - Start core services (postgres, backend, ui)"
+	@echo "  make up-full         - Start all services including drift and background jobs"
+	@echo "  make down            - Stop all services"
+	@echo "  make build           - Rebuild all services"
+	@echo "  make logs            - View logs from all services"
+	@echo "  make logs-backend    - View backend logs"
+	@echo "  make logs-ui         - View UI logs"
+	@echo "  make clean           - Stop services and remove volumes (fresh start)"
+	@echo "  make restart         - Restart all services"
+	@echo "  make status          - Show status of all services"
+	@echo "  make shell-backend   - Open bash shell in backend container"
+	@echo "  make shell-ui        - Open shell in UI container"
+	@echo "  make shell-postgres  - Open psql in postgres container"
+	@echo "  make test-api        - Test backend API endpoint"
+	@echo ""
+
+# Start core services
+up:
+	docker-compose -f docker-compose.local.yml up -d
+	@echo ""
+	@echo "✅ Services started!"
+	@echo "   - UI:      http://localhost:3030"
+	@echo "   - Backend: http://localhost:3000"
+	@echo "   - Postgres: localhost:5432"
+	@echo ""
+	@echo "View logs: make logs"
+
+# Start all services including optional ones
+up-full:
+	docker-compose -f docker-compose.local.yml --profile full up -d
+	@echo ""
+	@echo "✅ All services started!"
+	@echo "   - UI:      http://localhost:3030"
+	@echo "   - Backend: http://localhost:3000"
+	@echo "   - Drift:   http://localhost:3001"
+	@echo "   - Postgres: localhost:5432"
+	@echo ""
+
+# Stop services
+down:
+	docker-compose -f docker-compose.local.yml down
+
+# Build/rebuild services
+build:
+	docker-compose -f docker-compose.local.yml build
+
+# View logs
+logs:
+	docker-compose -f docker-compose.local.yml logs -f
+
+logs-backend:
+	docker-compose -f docker-compose.local.yml logs -f backend
+
+logs-ui:
+	docker-compose -f docker-compose.local.yml logs -f ui
+
+logs-postgres:
+	docker-compose -f docker-compose.local.yml logs -f postgres
+
+# Clean everything (including volumes)
+clean:
+	docker-compose -f docker-compose.local.yml down -v
+	@echo "✅ Cleaned up! All containers, networks, and volumes removed."
+
+# Restart services
+restart:
+	docker-compose -f docker-compose.local.yml restart
+
+# Show service status
+status:
+	docker-compose -f docker-compose.local.yml ps
+
+# Open shell in backend container
+shell-backend:
+	docker-compose -f docker-compose.local.yml exec backend bash
+
+# Open shell in UI container
+shell-ui:
+	docker-compose -f docker-compose.local.yml exec ui sh
+
+# Open PostgreSQL shell
+shell-postgres:
+	docker-compose -f docker-compose.local.yml exec postgres psql -U postgres -d digger
+
+# Test API endpoint
+test-api:
+	@echo "Testing backend API..."
+	@curl -s http://localhost:3000/ || echo "Backend not responding"
+	@echo ""
+
+# Rebuild and restart
+rebuild:
+	docker-compose -f docker-compose.local.yml up --build -d
+	@echo "✅ Services rebuilt and restarted!"
