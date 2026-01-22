@@ -7,6 +7,7 @@ replace github.com/diggerhq/digger/libs => ../libs
 require (
 	github.com/diggerhq/digger/libs v0.0.0-00010101000000-000000000000
 	github.com/google/go-github/v61 v61.0.0
+	github.com/invopop/jsonschema v0.12.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
