@@ -384,23 +384,23 @@ func (svc GithubService) CreateCheckRun(name string, status string, conclusion s
 
 	ctx := context.Background()
 	checkRun, resp, err := client.Checks.CreateCheckRun(ctx, owner, repoName, opts)
-	
+
 	// Log rate limit information
 	if resp != nil {
 		limit := resp.Header.Get("X-RateLimit-Limit")
 		remaining := resp.Header.Get("X-RateLimit-Remaining")
 		reset := resp.Header.Get("X-RateLimit-Reset")
-		
+
 		if limit != "" && remaining != "" {
 			limitInt, _ := strconv.Atoi(limit)
 			remainingInt, _ := strconv.Atoi(remaining)
-			
+
 			// Calculate percentage remaining
 			var percentRemaining float64
 			if limitInt > 0 {
 				percentRemaining = (float64(remainingInt) / float64(limitInt)) * 100
 			}
-			
+
 			// Log based on severity
 			if remainingInt == 0 {
 				slog.Error("GitHub API rate limit EXHAUSTED",
@@ -431,17 +431,17 @@ func (svc GithubService) CreateCheckRun(name string, status string, conclusion s
 			}
 		}
 	}
-	
+
 	return checkRun, err
 }
 
 type GithubCheckRunUpdateOptions struct {
-	Status *string
+	Status     *string
 	Conclusion *string
-	Title *string
-	Summary *string
-	Text *string
-	Actions []*github.CheckRunAction
+	Title      *string
+	Summary    *string
+	Text       *string
+	Actions    []*github.CheckRunAction
 }
 
 func (svc GithubService) UpdateCheckRun(checkRunId string, options GithubCheckRunUpdateOptions) (*github.CheckRun, error) {
@@ -527,8 +527,8 @@ func (svc GithubService) UpdateCheckRun(checkRunId string, options GithubCheckRu
 	}
 
 	opts := github.UpdateCheckRunOptions{
-		Name:   *existingCheckRun.Name,
-		Output: output,
+		Name:    *existingCheckRun.Name,
+		Output:  output,
 		Actions: newActions,
 	}
 
@@ -540,7 +540,55 @@ func (svc GithubService) UpdateCheckRun(checkRunId string, options GithubCheckRu
 		opts.Conclusion = github.String(*conclusion)
 	}
 
-	checkRun, _, err := client.Checks.UpdateCheckRun(ctx, owner, repoName, checkRunIdInt64, opts)
+	checkRun, resp, err := client.Checks.UpdateCheckRun(ctx, owner, repoName, checkRunIdInt64, opts)
+
+	// Log rate limit information
+	if resp != nil {
+		limit := resp.Header.Get("X-RateLimit-Limit")
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		reset := resp.Header.Get("X-RateLimit-Reset")
+
+		if limit != "" && remaining != "" {
+			limitInt, _ := strconv.Atoi(limit)
+			remainingInt, _ := strconv.Atoi(remaining)
+
+			// Calculate percentage remaining
+			var percentRemaining float64
+			if limitInt > 0 {
+				percentRemaining = (float64(remainingInt) / float64(limitInt)) * 100
+			}
+
+			// Log based on severity
+			if remainingInt == 0 {
+				slog.Error("GitHub API rate limit EXHAUSTED",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else if percentRemaining < 20 {
+				slog.Warn("GitHub API rate limit getting LOW",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining),
+					"reset", reset,
+					"owner", owner,
+					"repo", repoName)
+			} else {
+				slog.Debug("GitHub API rate limit status",
+					"operation", "UpdateCheckRun",
+					"checkRunId", checkRunId,
+					"limit", limit,
+					"remaining", remaining,
+					"percentRemaining", fmt.Sprintf("%.1f%%", percentRemaining))
+			}
+		}
+	}
+
 	if err != nil {
 		slog.Error("Failed to update check run",
 			"inputCheckRunId", checkRunId,
@@ -741,12 +789,53 @@ func (svc GithubService) CheckBranchExists(branchName string) (bool, error) {
 	return true, nil
 }
 
+// getStringValue safely dereferences a string pointer, returning empty string if nil
+func getStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// getWorkflowCommands safely retrieves workflow commands, returning empty slice if configuration is nil
+func getWorkflowCommands(config *digger_config.WorkflowConfiguration, commandType string) []string {
+	if config == nil {
+		return []string{}
+	}
+
+	switch commandType {
+	case "OnCommitToDefault":
+		return config.OnCommitToDefault
+	case "OnPullRequestPushed":
+		return config.OnPullRequestPushed
+	case "OnPullRequestClosed":
+		return config.OnPullRequestClosed
+	case "OnPullRequestConvertedToDraft":
+		return config.OnPullRequestConvertedToDraft
+	default:
+		return []string{}
+	}
+}
+
 func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impactedProjects []digger_config.Project, requestedProject *digger_config.Project, config digger_config.DiggerConfig, performEnvVarInterpolation bool) ([]scheduler.Job, bool, error) {
 	workflows := config.Workflows
 	jobs := make([]scheduler.Job, 0)
 
-	defaultBranch := *payload.Repo.DefaultBranch
-	prBranch := payload.PullRequest.Head.GetRef()
+	if payload == nil || payload.Repo == nil || payload.PullRequest == nil {
+		return nil, false, fmt.Errorf("invalid payload: missing required fields")
+	}
+
+	var defaultBranch string
+	if payload.Repo.DefaultBranch != nil {
+		defaultBranch = *payload.Repo.DefaultBranch
+	} else {
+		defaultBranch = "main" // fallback default
+	}
+
+	var prBranch string
+	if payload.PullRequest.Head != nil {
+		prBranch = payload.PullRequest.Head.GetRef()
+	}
 
 	coversAllImpactedProjects := true
 
@@ -767,7 +856,13 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 		runEnvVars := generic.GetRunEnvVars(defaultBranch, prBranch, project.Name, project.Dir)
 
 		stateEnvVars, commandEnvVars := digger_config.CollectTerraformEnvConfig(workflow.EnvVars, performEnvVarInterpolation)
-		pullRequestNumber := payload.PullRequest.Number
+		var pullRequestNumber *int
+		if payload.PullRequest.Number != nil {
+			pullRequestNumber = payload.PullRequest.Number
+		} else {
+			defaultPRNumber := 0
+			pullRequestNumber = &defaultPRNumber
+		}
 
 		stateRole, cmdRole := "", ""
 		if project.AwsRoleToAssume != nil {
@@ -781,11 +876,23 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 		}
 
 		StateEnvProvider, CommandEnvProvider := scheduler.GetStateAndCommandProviders(project)
-		if *payload.Action == "closed" && *payload.PullRequest.Merged && *(payload.PullRequest.Base).Ref == *(payload.Repo).DefaultBranch {
+		action := getStringValue(payload.Action)
+
+		var isMerged bool
+		if payload.PullRequest.Merged != nil {
+			isMerged = *payload.PullRequest.Merged
+		}
+
+		var baseRef string
+		if payload.PullRequest.Base != nil && payload.PullRequest.Base.Ref != nil {
+			baseRef = *payload.PullRequest.Base.Ref
+		}
+
+		if action == "closed" && isMerged && baseRef == defaultBranch {
 			slog.Info("processing merged PR to default branch",
 				"prNumber", *pullRequestNumber,
 				"project", project.Name,
-				"action", *payload.Action)
+				"action", action)
 
 			jobs = append(jobs, scheduler.Job{
 				ProjectName:        project.Name,
@@ -797,7 +904,7 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				Terragrunt:         project.Terragrunt,
 				OpenTofu:           project.OpenTofu,
 				Pulumi:             project.Pulumi,
-				Commands:           workflow.Configuration.OnCommitToDefault,
+				Commands:           getWorkflowCommands(workflow.Configuration, "OnCommitToDefault"),
 				ApplyStage:         scheduler.ToConfigStage(workflow.Apply),
 				PlanStage:          scheduler.ToConfigStage(workflow.Plan),
 				RunEnvVars:         runEnvVars,
@@ -805,8 +912,8 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				StateEnvVars:       stateEnvVars,
 				PullRequestNumber:  pullRequestNumber,
 				EventName:          "pull_request",
-				Namespace:          *payload.Repo.FullName,
-				RequestedBy:        *payload.Sender.Login,
+				Namespace:          getStringValue(payload.Repo.FullName),
+				RequestedBy:        getStringValue(payload.Sender.Login),
 				CommandEnvProvider: CommandEnvProvider,
 				CommandRoleArn:     cmdRole,
 				StateRoleArn:       stateRole,
@@ -814,11 +921,11 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				CognitoOidcConfig:  project.AwsCognitoOidcConfig,
 				SkipMergeCheck:     skipMerge,
 			})
-		} else if *payload.Action == "opened" || *payload.Action == "reopened" || *payload.Action == "synchronize" {
+		} else if action == "opened" || action == "reopened" || action == "synchronize" {
 			slog.Info("processing PR update",
 				"prNumber", *pullRequestNumber,
 				"project", project.Name,
-				"action", *payload.Action)
+				"action", action)
 
 			jobs = append(jobs, scheduler.Job{
 				ProjectName:        project.Name,
@@ -830,7 +937,7 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				Terragrunt:         project.Terragrunt,
 				OpenTofu:           project.OpenTofu,
 				Pulumi:             project.Pulumi,
-				Commands:           workflow.Configuration.OnPullRequestPushed,
+				Commands:           getWorkflowCommands(workflow.Configuration, "OnPullRequestPushed"),
 				ApplyStage:         scheduler.ToConfigStage(workflow.Apply),
 				PlanStage:          scheduler.ToConfigStage(workflow.Plan),
 				RunEnvVars:         runEnvVars,
@@ -838,8 +945,8 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				StateEnvVars:       stateEnvVars,
 				PullRequestNumber:  pullRequestNumber,
 				EventName:          "pull_request",
-				Namespace:          *payload.Repo.FullName,
-				RequestedBy:        *payload.Sender.Login,
+				Namespace:          getStringValue(payload.Repo.FullName),
+				RequestedBy:        getStringValue(payload.Sender.Login),
 				CommandEnvProvider: CommandEnvProvider,
 				CommandRoleArn:     cmdRole,
 				StateRoleArn:       stateRole,
@@ -847,7 +954,7 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				CognitoOidcConfig:  project.AwsCognitoOidcConfig,
 				SkipMergeCheck:     skipMerge,
 			})
-		} else if *payload.Action == "closed" {
+		} else if action == "closed" {
 			slog.Info("processing PR closed",
 				"prNumber", *pullRequestNumber,
 				"project", project.Name)
@@ -862,7 +969,7 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				Terragrunt:         project.Terragrunt,
 				OpenTofu:           project.OpenTofu,
 				Pulumi:             project.Pulumi,
-				Commands:           workflow.Configuration.OnPullRequestClosed,
+				Commands:           getWorkflowCommands(workflow.Configuration, "OnPullRequestClosed"),
 				ApplyStage:         scheduler.ToConfigStage(workflow.Apply),
 				PlanStage:          scheduler.ToConfigStage(workflow.Plan),
 				RunEnvVars:         runEnvVars,
@@ -870,8 +977,8 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				StateEnvVars:       stateEnvVars,
 				PullRequestNumber:  pullRequestNumber,
 				EventName:          "pull_request",
-				Namespace:          *payload.Repo.FullName,
-				RequestedBy:        *payload.Sender.Login,
+				Namespace:          getStringValue(payload.Repo.FullName),
+				RequestedBy:        getStringValue(payload.Sender.Login),
 				CommandEnvProvider: CommandEnvProvider,
 				CommandRoleArn:     cmdRole,
 				StateRoleArn:       stateRole,
@@ -879,12 +986,12 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				CognitoOidcConfig:  project.AwsCognitoOidcConfig,
 				SkipMergeCheck:     skipMerge,
 			})
-		} else if *payload.Action == "converted_to_draft" {
+		} else if action == "converted_to_draft" {
 			var commands []string
-			if config.AllowDraftPRs == false && len(workflow.Configuration.OnPullRequestConvertedToDraft) == 0 {
+			if config.AllowDraftPRs == false && len(getWorkflowCommands(workflow.Configuration, "OnPullRequestConvertedToDraft")) == 0 {
 				commands = []string{"digger unlock"}
 			} else {
-				commands = workflow.Configuration.OnPullRequestConvertedToDraft
+				commands = getWorkflowCommands(workflow.Configuration, "OnPullRequestConvertedToDraft")
 			}
 
 			slog.Info("processing PR converted to draft",
@@ -910,8 +1017,8 @@ func ConvertGithubPullRequestEventToJobs(payload *github.PullRequestEvent, impac
 				StateEnvVars:       stateEnvVars,
 				PullRequestNumber:  pullRequestNumber,
 				EventName:          "pull_request_converted_to_draft",
-				Namespace:          *payload.Repo.FullName,
-				RequestedBy:        *payload.Sender.Login,
+				Namespace:          getStringValue(payload.Repo.FullName),
+				RequestedBy:        getStringValue(payload.Sender.Login),
 				CommandEnvProvider: CommandEnvProvider,
 				CommandRoleArn:     cmdRole,
 				StateRoleArn:       stateRole,
