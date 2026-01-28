@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"unicode/utf8"
 
 	"github.com/diggerhq/digger/backend/models"
 	"github.com/diggerhq/digger/backend/utils"
@@ -13,12 +14,11 @@ import (
 	orchestrator_scheduler "github.com/diggerhq/digger/libs/scheduler"
 )
 
-
-func GenerateChecksSummaryForBatch( batch *models.DiggerBatch) (string, error) {
+func GenerateChecksSummaryForBatch(batch *models.DiggerBatch) (string, error) {
 	summaryEndpoint := os.Getenv("DIGGER_AI_SUMMARY_ENDPOINT")
 	if summaryEndpoint == "" {
 		slog.Error("DIGGER_AI_SUMMARY_ENDPOINT not set")
-		return"", fmt.Errorf("could not generate AI summary, ai summary endpoint missing")
+		return "", fmt.Errorf("could not generate AI summary, ai summary endpoint missing")
 	}
 	apiToken := os.Getenv("DIGGER_AI_SUMMARY_API_TOKEN")
 
@@ -73,12 +73,12 @@ func GenerateChecksSummaryForBatch( batch *models.DiggerBatch) (string, error) {
 	return summary, nil
 }
 
-func GenerateChecksSummaryForJob( job *models.DiggerJob) (string, error) {
+func GenerateChecksSummaryForJob(job *models.DiggerJob) (string, error) {
 	batch := job.Batch
 	summaryEndpoint := os.Getenv("DIGGER_AI_SUMMARY_ENDPOINT")
 	if summaryEndpoint == "" {
 		slog.Error("AI summary endpoint not configured", "batch", batch.ID, "jobId", job.ID, "DiggerJobId", job.DiggerJobID)
-		return"", fmt.Errorf("could not generate AI summary, ai summary endpoint missing")
+		return "", fmt.Errorf("could not generate AI summary, ai summary endpoint missing")
 	}
 	apiToken := os.Getenv("DIGGER_AI_SUMMARY_API_TOKEN")
 
@@ -100,7 +100,7 @@ func GenerateChecksSummaryForJob( job *models.DiggerJob) (string, error) {
 	summary := ""
 
 	if job.WorkflowRunUrl != nil {
-		summary += fmt.Sprintf(":link: <a href='%v'>CI job</a>\n\n", *job.WorkflowRunUrl )
+		summary += fmt.Sprintf(":link: <a href='%v'>CI job</a>\n\n", *job.WorkflowRunUrl)
 	}
 
 	if aiSummary != "FOUR_OH_FOUR" {
@@ -109,7 +109,6 @@ func GenerateChecksSummaryForJob( job *models.DiggerJob) (string, error) {
 
 	return summary, nil
 }
-
 
 func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerBatch) error {
 	slog.Info("Updating PR status for batch",
@@ -248,6 +247,72 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 				"checkRunId", *batch.CheckRunId,
 				"status", status)
 		}
+
+		// Check if plan batch succeeded with zero changes and auto-succeed the apply check
+		if batch.Status == orchestrator_scheduler.BatchJobSucceeded {
+			allJobsHaveZeroChanges := true
+			for _, job := range jobs {
+				if job.DiggerJobSummary.ResourcesCreated > 0 ||
+				   job.DiggerJobSummary.ResourcesUpdated > 0 ||
+				   job.DiggerJobSummary.ResourcesDeleted > 0 {
+					allJobsHaveZeroChanges = false
+					break
+				}
+			}
+
+			if allJobsHaveZeroChanges {
+				slog.Info("Plan batch completed with zero changes - auto-succeeding apply check",
+					"batchId", batch.ID,
+					"prNumber", batch.PrNumber,
+				)
+
+				// Find and update the digger/apply check to success
+				completedStatus := "completed"
+				successConclusion := "success"
+				applyTitle := "No changes to apply"
+				applySummary := "All plan jobs completed with zero changes. The apply check has been automatically set to succeeded."
+				applyMessage := "All terraform plans show no changes:\n\n" + message
+
+				applyOpts := github.GithubCheckRunUpdateOptions{
+					Status:     &completedStatus,
+					Conclusion: &successConclusion,
+					Title:      &applyTitle,
+					Summary:    &applySummary,
+					Text:       &applyMessage,
+					Actions:    nil, // No actions needed since there's nothing to apply
+				}
+
+				// Get the digger/apply check run for this commit and update it
+				// We need to find it by name since we don't store its ID
+				checkRuns, err := ghPrService.GetCheckRunsForCommit(batch.CommitSha)
+				if err != nil {
+					slog.Warn("Failed to get check runs for commit to update apply check",
+						"batchId", batch.ID,
+						"commitSha", batch.CommitSha,
+						"error", err,
+					)
+				} else {
+					for _, checkRun := range checkRuns {
+						if checkRun.GetName() == "digger/apply" {
+							_, err = ghPrService.UpdateCheckRun(fmt.Sprintf("%d", checkRun.GetID()), applyOpts)
+							if err != nil {
+								slog.Warn("Failed to auto-succeed apply check for zero-change plan",
+									"batchId", batch.ID,
+									"checkRunId", checkRun.GetID(),
+									"error", err,
+								)
+							} else {
+								slog.Info("Successfully auto-succeeded apply check for zero-change plan",
+									"batchId", batch.ID,
+									"checkRunId", checkRun.GetID(),
+								)
+							}
+							break
+						}
+					}
+				}
+			}
+		}
 	} else {
 		if disableDiggerApplyStatusCheck == false {
 			status := serializedBatch.ToCheckRunStatus()
@@ -283,7 +348,6 @@ func UpdateCheckRunForBatch(gh utils.GithubClientProvider, batch *models.DiggerB
 	}
 	return nil
 }
-
 
 // more modern check runs on github have their own page
 func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) error {
@@ -359,11 +423,11 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 			"error", err)
 		return fmt.Errorf("could not get conclusion for job: %v", err)
 	}
-	
+
 	// Validate status and conclusion before sending to GitHub
 	validStatuses := map[string]bool{"queued": true, "in_progress": true, "completed": true}
 	validConclusions := map[string]bool{"": true, "success": true, "failure": true, "neutral": true, "cancelled": true, "timed_out": true, "action_required": true, "skipped": true}
-	
+
 	if !validStatuses[status] {
 		slog.Warn("Invalid Check Run status detected",
 			"jobId", job.DiggerJobID,
@@ -371,7 +435,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 			"checkRunStatus", status,
 			"validStatuses", []string{"queued", "in_progress", "completed"})
 	}
-	
+
 	if !validConclusions[conclusion] {
 		slog.Warn("Invalid Check Run conclusion detected",
 			"jobId", job.DiggerJobID,
@@ -379,7 +443,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 			"checkRunConclusion", conclusion,
 			"validConclusions", []string{"", "success", "failure", "neutral", "cancelled", "timed_out", "action_required", "skipped"})
 	}
-	
+
 	slog.Debug("Preparing to update Check Run for job",
 		"jobId", job.DiggerJobID,
 		"jobStatus", job.Status,
@@ -394,11 +458,19 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 		conclusionPtr = &conclusion
 	}
 
+	// Character limit check - GitHub check run text field has a 65535 character limit
+	const maxCheckRunTextLength = 65535
+	cutOffMsg := "\n[Character limit exceeded, output truncated]"
+	if utf8.RuneCountInString(job.TerraformOutput) > maxCheckRunTextLength {
+		runes := []rune(job.TerraformOutput)
+		truncateAt := maxCheckRunTextLength - utf8.RuneCountInString(cutOffMsg)
+		job.TerraformOutput = string(runes[:truncateAt]) + cutOffMsg
+	}
+
 	text := "" +
 		"```terraform\n" +
 		job.TerraformOutput +
 		"```\n"
-
 
 	var summary = ""
 	if job.Status == orchestrator_scheduler.DiggerJobSucceeded || job.Status == orchestrator_scheduler.DiggerJobFailed {
@@ -407,7 +479,6 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 			slog.Warn("Error generating checks summary for batch", "batchId", batch.ID, "error", err)
 		}
 	}
-
 
 	slog.Debug("Updating PR status for job", "jobId", job.DiggerJobID, "status", status, "conclusion", conclusion)
 	if isPlan {

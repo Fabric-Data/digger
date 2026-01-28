@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -170,6 +171,27 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		)
 		commentReporterManager.UpdateComment(fmt.Sprintf(":x: Could not load digger config, error: %v", err))
 		return fmt.Errorf("error getting digger config")
+	}
+
+	if payload.Sender.GetType() == "Bot" {
+		if lo.Contains(prLabelsStr, "digger:allowbot") {
+			slog.Info("Allowing bot comment due to label override",
+				"issueNumber", issueNumber,
+				"label", "digger:allowbot",
+			)
+		} else {
+			commentUserID := payload.GetComment().GetUser().GetID()
+			if commentUserID == 0 {
+				commentUserID = payload.GetSender().GetID()
+			}
+			if !lo.Contains(config.TrustedAppIDs, commentUserID) {
+				slog.Info("Ignoring bot comment from untrusted app",
+					"issueNumber", issueNumber,
+					"commentUserId", commentUserID,
+				)
+				return nil
+			}
+		}
 	}
 
 	if config.DisableDiggerApplyComment && strings.HasPrefix(cleanedComment, "digger apply") {
@@ -359,14 +381,15 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 	}
 
 	maxImpactedProjectsPerChange := config2.MaxImpactedProjectsPerChange()
-	if len(impactedProjectsForComment) > maxImpactedProjectsPerChange {
+	hasForceLabel := slices.Contains(prLabelsStr, "digger:force")
+	if len(impactedProjectsForComment) > maxImpactedProjectsPerChange && !hasForceLabel {
 		slog.Error("Number of impacted projects exceeds number of changed files",
 			"prNumber", issueNumber,
 			"impactedProjectCount", len(impactedProjectsForComment),
 			"changedFileCount", len(changedFiles),
 		)
 
-		commentReporterManager.UpdateComment(fmt.Sprintf(":x: Error the number impacted projects %v exceeds Max allowed ImpactedProjectsPerChange: %v, we set this limit to protect against hitting github API limits", len(impactedProjectsForComment), maxImpactedProjectsPerChange))
+		commentReporterManager.UpdateComment(fmt.Sprintf(":x: Error the number impacted projects %v exceeds Max allowed ImpactedProjectsPerChange: %v, we set this limit to protect against hitting github API limits. Add the 'digger:force' label to bypass this limit.", len(impactedProjectsForComment), maxImpactedProjectsPerChange))
 
 		slog.Debug("Detailed event information",
 			slog.Group("details",
@@ -376,6 +399,14 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 			),
 		)
 		return fmt.Errorf("error processing event")
+	}
+
+	if hasForceLabel && len(impactedProjectsForComment) > maxImpactedProjectsPerChange {
+		slog.Warn("Bypassing impacted projects limit due to digger:force label",
+			"prNumber", issueNumber,
+			"impactedProjectCount", len(impactedProjectsForComment),
+			"maxAllowed", maxImpactedProjectsPerChange,
+		)
 	}
 
 	if !config.AllowDraftPRs && isDraft {
