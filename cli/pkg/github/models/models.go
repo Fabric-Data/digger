@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/diggerhq/digger/libs/ci/github/models"
@@ -35,6 +34,7 @@ func (g *GithubAction) ToEventPackage() models.EventPackage {
 		Repository: g.Repository,
 	}
 }
+
 func (g *GithubAction) UnmarshalJSON(data []byte) error {
 	type Alias GithubAction
 	aux := struct {
@@ -95,7 +95,14 @@ func (g *GithubAction) UnmarshalJSON(data []byte) error {
 		}
 		g.Event = event
 	default:
-		return errors.New("unknown GitHub event: " + g.EventName)
+		// Forward compatible: don’t hard-fail on new/unsupported GitHub events.
+		// Keep the event payload as a generic map so downstream code can still
+		// access fields it needs.
+		var event map[string]any
+		if err := json.Unmarshal(rawEvent, &event); err != nil {
+			return err
+		}
+		g.Event = event
 	}
 
 	return nil
