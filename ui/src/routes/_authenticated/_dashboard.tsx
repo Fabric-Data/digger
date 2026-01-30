@@ -1,8 +1,9 @@
 import { redirect, createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { useState } from 'react';
 import { getSignInUrl } from '../../authkit/serverFunctions';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from '@/components/ui/sidebar';
 import { Link } from '@tanstack/react-router';
-import { GitBranch, Folders, Waves, Settings, CreditCard, LogOut, Cuboid} from 'lucide-react';
+import { GitBranch, Folders, Waves, Settings, CreditCard, LogOut, Cuboid, Bot, X } from 'lucide-react';
 import WorkosOrgSwitcher from '@/components/WorkosOrgSwitcher';
 import { WorkOsWidgets } from '@workos-inc/widgets';
 
@@ -17,7 +18,8 @@ export const Route = createFileRoute('/_authenticated/_dashboard')({
 function DashboardComponent() {
     const { user, organisationName, organisationId, publicServerConfig } = Route.useLoaderData();
     const workosEnabled = publicServerConfig.WORKOS_REDIRECT_URI !== '';
-    const location = useLocation(); 
+    const location = useLocation();
+    const [isCopilotOpen, setIsCopilotOpen] = useState(false);
     return (
         <SidebarProvider>
         <WorkOsWidgets
@@ -116,6 +118,31 @@ function DashboardComponent() {
               <Outlet />
             </div>
           </main>
+
+          {/* Copilot Sidebar */}
+          <div
+            className={`h-full border-l border-border bg-background transition-all duration-300 ease-in-out ${
+              isCopilotOpen ? 'w-[800px]' : 'w-0'
+            }`}
+          >
+            {isCopilotOpen && (
+              <iframe
+                src="https://oshu.dev/portal/734af699-8b2f-4501-b853-88e8e0f80020"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                allow="clipboard-write"
+                title="Copilot Assistant"
+              />
+            )}
+          </div>
+
+          {/* Copilot Toggle Button */}
+          <button
+            onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+            className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+            aria-label={isCopilotOpen ? "Close Copilot" : "Open Copilot"}
+          >
+            {isCopilotOpen ? <X className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
+          </button>
         </div>
         </WorkOsWidgets>
       </SidebarProvider>    
