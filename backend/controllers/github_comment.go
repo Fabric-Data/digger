@@ -135,6 +135,20 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 		return fmt.Errorf("error getting ghService to post error comment")
 	}
 
+
+	// Add reaction immediately to acknowledge we received the command
+	commentIdStr := strconv.FormatInt(userCommentId, 10)
+	err = ghService.CreateCommentReaction(commentIdStr, string(github2.GithubCommentEyesReaction))
+	if err != nil {
+		slog.Warn("Failed to create comment reaction",
+			"commentId", commentIdStr,
+			"error", err,
+		)
+	} else {
+		slog.Debug("Added eyes reaction to comment", "commentId", commentIdStr)
+	}
+
+
 	commentReporterManager := utils.InitCommentReporterManager(ghService, issueNumber)
 	if os.Getenv("DIGGER_REPORT_BEFORE_LOADING_CONFIG") == "1" {
 		_, err := commentReporterManager.UpdateComment(":construction_worker: Digger starting....")
@@ -218,17 +232,6 @@ func handleIssueCommentEvent(gh utils.GithubClientProvider, payload *github.Issu
 			)
 			return err
 		}
-	}
-
-	commentIdStr := strconv.FormatInt(userCommentId, 10)
-	err = ghService.CreateCommentReaction(commentIdStr, string(github2.GithubCommentEyesReaction))
-	if err != nil {
-		slog.Warn("Failed to create comment reaction",
-			"commentId", commentIdStr,
-			"error", err,
-		)
-	} else {
-		slog.Debug("Added eyes reaction to comment", "commentId", commentIdStr)
 	}
 
 	commentReporter, err := commentReporterManager.UpdateComment(":construction_worker: Digger starting.... config loaded successfully")
