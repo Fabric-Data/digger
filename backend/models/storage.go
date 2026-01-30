@@ -2044,3 +2044,195 @@ func (db *Database) GetDiggerBatchesForPR(repoFullName string, prNumber int) ([]
 	return batches, nil
 
 }
+
+// Context Variables methods
+
+func (db *Database) CreateContextVariable(cv *ContextVariable) error {
+	result := db.GormDB.Create(cv)
+	if result.Error != nil {
+		slog.Error("error creating context variable",
+			"name", cv.Name,
+			"orgId", cv.OrganisationID,
+			"error", result.Error)
+		return result.Error
+	}
+	slog.Info("created context variable",
+		"id", cv.ID,
+		"name", cv.Name,
+		"orgId", cv.OrganisationID,
+		"isSecret", cv.IsSecret)
+	return nil
+}
+
+func (db *Database) GetContextVariablesByOrg(orgId uint) ([]ContextVariable, error) {
+	var variables []ContextVariable
+	result := db.GormDB.Preload("Repo").Where("organisation_id = ?", orgId).Find(&variables)
+	if result.Error != nil {
+		slog.Error("error fetching context variables for org",
+			"orgId", orgId,
+			"error", result.Error)
+		return nil, result.Error
+	}
+	slog.Info("fetched context variables for org",
+		"orgId", orgId,
+		"count", len(variables))
+	return variables, nil
+}
+
+func (db *Database) GetContextVariablesByRepo(repoId uint) ([]ContextVariable, error) {
+	var variables []ContextVariable
+	result := db.GormDB.Preload("Repo").Where("repo_id = ?", repoId).Find(&variables)
+	if result.Error != nil {
+		slog.Error("error fetching context variables for repo",
+			"repoId", repoId,
+			"error", result.Error)
+		return nil, result.Error
+	}
+	slog.Info("fetched context variables for repo",
+		"repoId", repoId,
+		"count", len(variables))
+	return variables, nil
+}
+
+func (db *Database) GetContextVariableById(id uint) (*ContextVariable, error) {
+	var variable ContextVariable
+	result := db.GormDB.Preload("Repo").First(&variable, id)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			slog.Debug("context variable not found", "id", id)
+			return nil, fmt.Errorf("context variable not found")
+		}
+		slog.Error("error fetching context variable",
+			"id", id,
+			"error", result.Error)
+		return nil, result.Error
+	}
+	return &variable, nil
+}
+
+func (db *Database) UpdateContextVariable(cv *ContextVariable) error {
+	result := db.GormDB.Save(cv)
+	if result.Error != nil {
+		slog.Error("error updating context variable",
+			"id", cv.ID,
+			"name", cv.Name,
+			"error", result.Error)
+		return result.Error
+	}
+	slog.Info("updated context variable",
+		"id", cv.ID,
+		"name", cv.Name)
+	return nil
+}
+
+func (db *Database) DeleteContextVariable(id uint) error {
+	result := db.GormDB.Delete(&ContextVariable{}, id)
+	if result.Error != nil {
+		slog.Error("error deleting context variable",
+			"id", id,
+			"error", result.Error)
+		return result.Error
+	}
+	slog.Info("deleted context variable", "id", id)
+	return nil
+}
+
+// GetContextVariablesForProject returns all context variables that apply to a given project
+// It filters based on repo, project name patterns, and directory patterns
+func (db *Database) GetContextVariablesForProject(orgId uint, repoId uint, projectName string, projectDirectory string) ([]ContextVariable, error) {
+	var variables []ContextVariable
+	
+	// Get all variables for the org
+	query := db.GormDB.Preload("Repo").Where("organisation_id = ?", orgId)
+	
+	// Include variables that:
+	// 1. Have no repo filter (org-wide)
+	// 2. Or match the specific repo
+	query = query.Where("repo_id IS NULL OR repo_id = ?", repoId)
+	
+	result := query.Find(&variables)
+	if result.Error != nil {
+		slog.Error("error fetching context variables for project",
+			"orgId", orgId,
+			"repoId", repoId,
+			"projectName", projectName,
+			"error", result.Error)
+		return nil, result.Error
+	}
+	
+	// Filter in memory for pattern matching
+	filtered := make([]ContextVariable, 0)
+	for _, v := range variables {
+		// If no filters, include it
+		if v.ProjectNameFilter == nil && v.ProjectDirectoryFilter == nil {
+			filtered = append(filtered, v)
+			continue
+		}
+		
+		// Check project name filter
+		nameMatch := true
+		if v.ProjectNameFilter != nil && *v.ProjectNameFilter != "" {
+			// Simple pattern matching (could be enhanced with regex)
+			// For now, simple string contains check
+			nameMatch = matchPattern(*v.ProjectNameFilter, projectName)
+		}
+		
+		// Check directory filter
+		dirMatch := true
+		if v.ProjectDirectoryFilter != nil && *v.ProjectDirectoryFilter != "" {
+			dirMatch = matchPattern(*v.ProjectDirectoryFilter, projectDirectory)
+		}
+		
+		if nameMatch && dirMatch {
+			filtered = append(filtered, v)
+		}
+	}
+	
+	slog.Info("filtered context variables for project",
+		"orgId", orgId,
+		"repoId", repoId,
+		"projectName", projectName,
+		"projectDirectory", projectDirectory,
+		"totalCount", len(variables),
+		"filteredCount", len(filtered))
+	
+	return filtered, nil
+}
+
+// Simple pattern matching helper - supports wildcards
+func matchPattern(pattern string, value string) bool {
+	// If pattern is empty, match all
+	if pattern == "" {
+		return true
+	}
+	
+	// Simple wildcard matching
+	if pattern == "*" {
+		return true
+	}
+	
+	// Contains check for now (can be enhanced with proper regex)
+	if len(pattern) > 0 && pattern[0] == '*' && pattern[len(pattern)-1] == '*' {
+		// *pattern* - contains
+		return len(value) >= len(pattern)-2 && 
+			   (len(pattern) == 2 || containsSubstring(value, pattern[1:len(pattern)-1]))
+	} else if len(pattern) > 0 && pattern[0] == '*' {
+		// *pattern - ends with
+		return len(value) >= len(pattern)-1 && 
+			   (len(pattern) == 1 || value[len(value)-(len(pattern)-1):] == pattern[1:])
+	} else if len(pattern) > 0 && pattern[len(pattern)-1] == '*' {
+		// pattern* - starts with
+		return len(value) >= len(pattern)-1 && 
+			   (len(pattern) == 1 || value[:len(pattern)-1] == pattern[:len(pattern)-1])
+	}
+	
+	// Exact match
+	return pattern == value
+}
+
+func containsSubstring(s string, substr string) bool {
+	return len(s) >= len(substr) && 
+		   (s == substr || 
+		    (len(s) > len(substr) && (s[:len(substr)] == substr || 
+		     containsSubstring(s[1:], substr))))
+}

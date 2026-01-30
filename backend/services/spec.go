@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -147,6 +148,91 @@ func getVariablesSpecFromEnvMap(envVars map[string]string) []spec.VariableSpec {
 	return variablesSpec
 }
 
+// getContextVariablesForJob retrieves and decrypts context variables for a given job
+func getContextVariablesForJob(job models.DiggerJob, jobSpec scheduler.JobJson) ([]spec.VariableSpec, error) {
+	batch := job.Batch
+	variablesSpec := make([]spec.VariableSpec, 0)
+
+	// Get the repo
+	var repo models.Repo
+	err := models.DB.GormDB.Where("repo_full_name = ? AND organisation_id = ?", batch.RepoFullName, batch.OrganisationId).First(&repo).Error
+	if err != nil {
+		slog.Warn("Could not find repo for context variables",
+			"jobId", job.DiggerJobID,
+			"repoFullName", batch.RepoFullName,
+			"orgId", batch.OrganisationId,
+			"error", err)
+		return variablesSpec, nil // Return empty list, not an error
+	}
+
+	// Get context variables for this project
+	contextVars, err := models.DB.GetContextVariablesForProject(
+		batch.OrganisationId,
+		repo.ID,
+		jobSpec.ProjectName,
+		jobSpec.ProjectDir,
+	)
+	if err != nil {
+		slog.Error("Failed to fetch context variables",
+			"jobId", job.DiggerJobID,
+			"projectName", jobSpec.ProjectName,
+			"error", err)
+		return variablesSpec, nil // Return empty list, not an error
+	}
+
+	if len(contextVars) == 0 {
+		slog.Debug("No context variables found for project",
+			"jobId", job.DiggerJobID,
+			"projectName", jobSpec.ProjectName)
+		return variablesSpec, nil
+	}
+
+	// Get encryption key
+	secret := os.Getenv("DIGGER_ENCRYPTION_SECRET")
+	if secret == "" {
+		slog.Error("No encryption secret specified for decrypting context variables", "jobId", job.DiggerJobID)
+		return variablesSpec, fmt.Errorf("ERROR: no encryption secret specified, please specify DIGGER_ENCRYPTION_SECRET as 32 bytes base64 string")
+	}
+
+	key, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		slog.Error("Failed to decode encryption key", "jobId", job.DiggerJobID, "error", err)
+		return variablesSpec, fmt.Errorf("ERROR: failed to decode encryption key: %v", err)
+	}
+
+	// Decrypt and add variables
+	for _, cv := range contextVars {
+		decryptedValue, err := utils.AESDecrypt(key, cv.ValueEncrypted)
+		if err != nil {
+			slog.Error("Failed to decrypt context variable",
+				"jobId", job.DiggerJobID,
+				"variableId", cv.ID,
+				"variableName", cv.Name,
+				"error", err)
+			continue // Skip this variable but continue with others
+		}
+
+		variablesSpec = append(variablesSpec, spec.VariableSpec{
+			Name:           cv.Name,
+			Value:          decryptedValue,
+			IsSecret:       cv.IsSecret,
+			IsInterpolated: false,
+		})
+
+		slog.Debug("Added context variable to spec",
+			"jobId", job.DiggerJobID,
+			"variableName", cv.Name,
+			"isSecret", cv.IsSecret)
+	}
+
+	slog.Info("Added context variables to spec",
+		"jobId", job.DiggerJobID,
+		"projectName", jobSpec.ProjectName,
+		"contextVariableCount", len(variablesSpec))
+
+	return variablesSpec, nil
+}
+
 func GetSpecFromJob(job models.DiggerJob) (*spec.Spec, error) {
 	var jobSpec scheduler.JobJson
 	err := json.Unmarshal([]byte(job.SerializedJobSpec), &jobSpec)
@@ -162,6 +248,17 @@ func GetSpecFromJob(job models.DiggerJob) (*spec.Spec, error) {
 	variablesSpec = append(variablesSpec, stateVariables...)
 	variablesSpec = append(variablesSpec, commandVariables...)
 	variablesSpec = append(variablesSpec, runVariables...)
+
+	// Add context variables
+	contextVariables, err := getContextVariablesForJob(job, jobSpec)
+	if err != nil {
+		// Log error but continue - context variables are optional
+		slog.Error("Failed to get context variables, continuing without them",
+			"jobId", job.DiggerJobID,
+			"error", err)
+	} else {
+		variablesSpec = append(variablesSpec, contextVariables...)
+	}
 
 	// check for duplicates in list of variablesSpec
 	justNames := lo.Map(variablesSpec, func(item spec.VariableSpec, i int) string {

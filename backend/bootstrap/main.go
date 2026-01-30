@@ -240,6 +240,13 @@ func Bootstrap(templates embed.FS, diggerController controllers.DiggerController
 		projectsApiGroup.GET("/:project_id/", controllers.ProjectsDetailsApi)
 		projectsApiGroup.PUT("/:project_id/", controllers.UpdateProjectApi)
 
+		contextVariablesApiGroup := apiGroup.Group("/context-variables")
+		contextVariablesApiGroup.GET("/", controllers.ListContextVariablesApi)
+		contextVariablesApiGroup.POST("/", controllers.CreateContextVariableApi)
+		contextVariablesApiGroup.GET("/:variable_id", controllers.GetContextVariableApi)
+		contextVariablesApiGroup.PUT("/:variable_id", controllers.UpdateContextVariableApi)
+		contextVariablesApiGroup.DELETE("/:variable_id", controllers.DeleteContextVariableApi)
+
 		githubApiGroup := apiGroup.Group("/github")
 		githubApiGroup.POST("/link", controllers.LinkGithubInstallationToOrgApi)
 		githubApiGroup.POST("/resync", controllers.ResyncGithubInstallationApi)

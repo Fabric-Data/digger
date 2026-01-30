@@ -151,13 +151,12 @@ func (p *Project) MapToJsonStruct() interface{} {
 		DriftStatus:           string(p.DriftStatus),
 		LatestDriftCheck:      p.LatestDriftCheck,
 		DriftTerraformPlan:    p.DriftTerraformPlan,
-		LastActivityTimestamp: p.UpdatedAt.String(),
-		LastActivityAuthor:    "unknown",
-		//LastActivityStatus:    string(status),
-		IsGenerated:    p.IsGenerated,
-		IsInMainBranch: p.IsInMainBranch,
+		LastActivityTimestamp: "",
+		LastActivityAuthor:    "",
+		LastActivityStatus:    "",
 	}
 }
+
 func (r *Repo) MapToJsonStruct() interface{} {
 	OrganisationName := func() string {
 		if r.Organisation == nil {
@@ -199,3 +198,46 @@ const (
 	AdminPolicyType  = "admin"
 	CliJobAccessType = "cli_access"
 )
+
+// ContextVariable represents a variable that can be shared with workflow runs
+// It can be filtered by project name (regex) or directory location
+type ContextVariable struct {
+	gorm.Model
+	Name                    string `json:"name" binding:"required"`
+	ValueEncrypted          string `json:"-"` // Never expose encrypted value in JSON
+	IsSecret                bool   `json:"is_secret"`
+	RepoID                  *uint  `json:"repo_id"` // Optional: if set, applies to specific repo
+	Repo                    *Repo  `json:"-"`
+	OrganisationID          uint   `json:"organisation_id" binding:"required"`
+	Organisation            *Organisation
+	ProjectNameFilter       *string `json:"project_name_filter"`       // Optional: regex to match project names
+	ProjectDirectoryFilter  *string `json:"project_directory_filter"`  // Optional: path pattern to match directories
+}
+
+func (cv *ContextVariable) MapToJsonStruct() interface{} {
+	return struct {
+		Id                     uint    `json:"id"`
+		Name                   string  `json:"name"`
+		IsSecret               bool    `json:"is_secret"`
+		Value                  string  `json:"value,omitempty"` // Only include for non-secret values
+		RepoID                 *uint   `json:"repo_id"`
+		RepoFullName           string  `json:"repo_full_name,omitempty"`
+		OrganisationID         uint    `json:"organisation_id"`
+		ProjectNameFilter      *string `json:"project_name_filter"`
+		ProjectDirectoryFilter *string `json:"project_directory_filter"`
+		CreatedAt              time.Time `json:"created_at"`
+		UpdatedAt              time.Time `json:"updated_at"`
+	}{
+		Id:                     cv.ID,
+		Name:                   cv.Name,
+		IsSecret:               cv.IsSecret,
+		Value:                  "", // Will be populated by controller for non-secrets
+		RepoID:                 cv.RepoID,
+		RepoFullName:           func() string { if cv.Repo != nil { return cv.Repo.RepoFullName }; return "" }(),
+		OrganisationID:         cv.OrganisationID,
+		ProjectNameFilter:      cv.ProjectNameFilter,
+		ProjectDirectoryFilter: cv.ProjectDirectoryFilter,
+		CreatedAt:              cv.CreatedAt,
+		UpdatedAt:              cv.UpdatedAt,
+	}
+}
