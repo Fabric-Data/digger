@@ -12,7 +12,7 @@ import (
 )
 
 // SignURL creates a signed URL valid until expiry.
-// Uses WEBHOOK_SECRET for signing and DIGGER_HOSTNAME as base URL.
+// Uses WEBHOOK_SECRET for signing and HOSTNAME as base URL.
 // This duplicates the pattern from taco/internal/auth/signed_url.go for use in the backend.
 func SignURL(path string, expiry time.Time) (string, error) {
 	secret := os.Getenv("WEBHOOK_SECRET")
@@ -20,14 +20,14 @@ func SignURL(path string, expiry time.Time) (string, error) {
 		return "", fmt.Errorf("WEBHOOK_SECRET not configured")
 	}
 
-	baseURL := os.Getenv("DIGGER_HOSTNAME")
+	baseURL := os.Getenv("HOSTNAME")
 	if baseURL == "" {
-		return "", fmt.Errorf("DIGGER_HOSTNAME not configured")
+		return "", fmt.Errorf("HOSTNAME not configured")
 	}
 
 	u, err := url.Parse(baseURL)
 	if err != nil {
-		return "", fmt.Errorf("invalid DIGGER_HOSTNAME: %w", err)
+		return "", fmt.Errorf("invalid HOSTNAME: %w", err)
 	}
 	u.Path = path
 	q := u.Query()
