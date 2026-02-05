@@ -212,7 +212,7 @@ func Bootstrap(templates embed.FS, diggerController controllers.DiggerController
 	admin.POST("/tokens/issue-access-token", controllers.IssueAccessTokenForOrg)
 
 	// Public endpoint for job output - auth via signed URL (no middleware needed)
-	r.GET("/api/jobs/:jobId/output", diggerController.GetJobOutput)
+	r.GET("/orchestrator/api/jobs/:jobId/output", diggerController.GetJobOutput)
 
 	r.Use(middleware.CORSMiddleware())
 
