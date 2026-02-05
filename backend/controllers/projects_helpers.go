@@ -463,7 +463,7 @@ func UpdateCheckRunForJob(gh utils.GithubClientProvider, job *models.DiggerJob) 
 	const maxCheckRunTextLength = 65535
 	if utf8.RuneCountInString(job.TerraformOutput) > maxCheckRunTextLength {
 		// Generate signed URL for full output (30-day expiry)
-		path := fmt.Sprintf("/api/jobs/%s/output", job.DiggerJobID)
+		path := fmt.Sprintf("/orchestrator/api/jobs/%s/output", job.DiggerJobID)
 		outputURL, urlErr := utils.SignURL(path, time.Now().Add(30*24*time.Hour))
 
 		var cutOffMsg string
