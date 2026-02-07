@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/diggerhq/digger/backend/models"
@@ -12,8 +13,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func envFlagEnabled(name string) bool {
+	v, ok := os.LookupEnv(name)
+	if !ok {
+		return false
+	}
+	v = strings.TrimSpace(strings.ToLower(v))
+	return v == "true" || v == "1" || v == "yes" || v == "on"
+}
+
 func GetWebMiddleware() gin.HandlerFunc {
-	if _, ok := os.LookupEnv("JWT_AUTH"); ok {
+	if envFlagEnabled("JWT_AUTH") {
 		slog.Info("Using JWT middleware for web routes")
 		auth := services.Auth{
 			HttpClient: http.Client{},
@@ -22,10 +32,10 @@ func GetWebMiddleware() gin.HandlerFunc {
 			ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 		}
 		return JWTWebAuth(auth)
-	} else if _, ok := os.LookupEnv("HTTP_BASIC_AUTH"); ok {
+	} else if envFlagEnabled("HTTP_BASIC_AUTH") {
 		slog.Info("Using http basic auth middleware for web routes")
 		return HttpBasicWebAuth()
-	} else if _, ok := os.LookupEnv("NOOP_AUTH"); ok {
+	} else if envFlagEnabled("NOOP_AUTH") {
 		slog.Info("Using noop auth for web routes")
 		return NoopWebAuth()
 	} else {
@@ -35,7 +45,7 @@ func GetWebMiddleware() gin.HandlerFunc {
 }
 
 func GetApiMiddleware() gin.HandlerFunc {
-	if _, ok := os.LookupEnv("JWT_AUTH"); ok {
+	if envFlagEnabled("JWT_AUTH") {
 		slog.Info("Using JWT middleware for API routes")
 		auth := services.Auth{
 			HttpClient: http.Client{},
@@ -44,10 +54,10 @@ func GetApiMiddleware() gin.HandlerFunc {
 			ClientId:   os.Getenv("FRONTEGG_CLIENT_ID"),
 		}
 		return JWTBearerTokenAuth(auth)
-	} else if _, ok := os.LookupEnv("HTTP_BASIC_AUTH"); ok {
+	} else if envFlagEnabled("HTTP_BASIC_AUTH") {
 		slog.Info("Using http basic auth middleware for API routes")
 		return HttpBasicApiAuth()
-	} else if _, ok := os.LookupEnv("NOOP_AUTH"); ok {
+	} else if envFlagEnabled("NOOP_AUTH") {
 		slog.Info("Using noop auth for API routes")
 		return NoopApiAuth()
 	} else {
