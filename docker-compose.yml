@@ -71,6 +71,9 @@ services:
       # Object store config
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=CHANGE_ME
+      # Sandbox sidecar config (for remote TF/Tofu runs)
+      - OPENTACO_SANDBOX_PROVIDER=e2b
+      - OPENTACO_E2B_SIDECAR_URL=http://sidecar:9100
       # Databse config
       - OPENTACO_QUERY_BACKEND=postgres
       - OPENTACO_POSTGRES_HOST=postgres
@@ -88,10 +91,25 @@ services:
         condition: service_healthy
       postgres-init:
         condition: service_completed_successfully
+      sidecar:
+        condition: service_healthy
       minio:
         condition: service_started
       minio-init:
         condition: service_completed_successfully
+
+  sidecar:
+    build:
+      context: sandbox-sidecar
+      dockerfile: Dockerfile_sidecar
+    environment:
+      - NODE_ENV=production
+      - PORT=9100
+      - SANDBOX_RUNNER=e2b
+      - E2B_API_KEY=CHANGE_ME
+      - E2B_BAREBONES_TEMPLATE_ID=CHANGE_ME
+    ports:
+      - "9100:9100"
 
   ui:
     build:
