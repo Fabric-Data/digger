@@ -4,14 +4,44 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=root
+      - POSTGRES_PASSWORD=CHANGE_ME
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  backend:
+  postgres-init:
+    image: postgres:alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=CHANGE_ME
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        echo "Waiting for postgres to accept connections..."
+        i=0
+        until psql -h postgres -U postgres -d postgres -c 'select 1' >/dev/null 2>&1; do
+          i=$$((i+1))
+          if [ $$i -ge 60 ]; then
+            echo 'Postgres not ready after 60s'
+            exit 1
+          fi
+          sleep 1
+        done
+
+        echo "Ensuring databases exist: orchestrator, statesman"
+        psql -h postgres -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+        SELECT 'CREATE DATABASE orchestrator' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'orchestrator')\gexec
+        SELECT 'CREATE DATABASE statesman'    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'statesman')\gexec
+        SQL
+        echo "Postgres databases ready"
+
+  orchestrator:
     build:
       context: .
       dockerfile: Dockerfile_backend
@@ -20,12 +50,14 @@ services:
     env_file:
       - backend/.env
     environment:
-      - DATABASE_URL=postgres://postgres:root@postgres:5432/postgres?sslmode=disable
+      - DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/orchestrator?sslmode=disable
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
 
   statesman:
     build:
@@ -35,12 +67,31 @@ services:
         COMMIT_SHA: local
     env_file:
       - taco/.env
+    environment:
+      # Object store config
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=CHANGE_ME
+      # Databse config
+      - OPENTACO_QUERY_BACKEND=postgres
+      - OPENTACO_POSTGRES_HOST=postgres
+      - OPENTACO_POSTGRES_PORT=5432
+      - OPENTACO_POSTGRES_USER=postgres
+      - OPENTACO_POSTGRES_PASSWORD=CHANGE_ME
+      - OPENTACO_POSTGRES_DBNAME=statesman
+      - OPENTACO_POSTGRES_SSLMODE=disable
+      # Back-compat for taco/scripts/entrypoint.sh (it currently expects *_DATABASE)
+      - OPENTACO_POSTGRES_DATABASE=statesman
     ports:
       - "8080:8080"
-    volumes:
-      - statesman-data:/app/data
     depends_on:
-      - minio
+      postgres:
+        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
 
   ui:
     build:
@@ -51,16 +102,41 @@ services:
     env_file:
       - ui/.env.local
     environment:
-      - ORCHESTRATOR_BACKEND_URL=http://backend:3000
+      - ORCHESTRATOR_BACKEND_URL=http://orchestrator:3000
       - STATESMAN_BACKEND_URL=http://statesman:8080
       - PUBLIC_URL=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
       - ALLOWED_HOSTS=localhost,127.0.0.1
     ports:
       - "3030:3030"
     depends_on:
-      - backend
+      - orchestrator
       - statesman
       - token-service
+
+  drift:
+    build:
+      context: .
+      dockerfile: Dockerfile_drift
+      args:
+        COMMIT_SHA: local
+    # Reuse backend env for DB + shared settings.
+    env_file:
+      - backend/.env
+    environment:
+      - DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/orchestrator?sslmode=disable
+      # Used for drift service internal scheduling triggers.
+      - DIGGER_HOSTNAME=http://drift:3000
+      # Auth for drift service internal endpoints (/ _internal/*).
+      - DIGGER_WEBHOOK_SECRET=drift-secret-CHANGE_ME
+      # Embedded in job specs so CI can report drift results back.
+      - DIGGER_DRIFT_REPORTER_HOSTNAME=http://drift:3000 # TODO: This isnt publically accessible... should it be proxied via the UI?
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
 
   token-service:
     build:
@@ -78,7 +154,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_ROOT_PASSWORD=CHANGE_ME
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -89,13 +165,16 @@ services:
     image: minio/mc:latest
     depends_on:
       - minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=CHANGE_ME
     entrypoint:
       - /bin/sh
       - -c
       - |
         # Wait for MinIO to accept connections before creating buckets.
         i=0
-        until mc alias set local http://minio:9000 minioadmin minioadmin; do
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
           i=$$((i+1))
           if [ $$i -ge 60 ]; then
             echo 'MinIO not ready after 60s'
@@ -106,8 +185,6 @@ services:
         mc mb -p local/opentaco || true
 
 volumes:
-  statesman-data:
-    driver: local
   minio-data:
     driver: local
   token-service-data:
