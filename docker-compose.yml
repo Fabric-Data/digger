@@ -147,7 +147,7 @@ services:
       # Auth for drift service internal endpoints (/ _internal/*).
       - DIGGER_WEBHOOK_SECRET=drift-secret-CHANGE_ME
       # Embedded in job specs so CI can report drift results back.
-      - DIGGER_DRIFT_REPORTER_HOSTNAME=http://drift:3000 # TODO: This isnt publically accessible... should it be proxied via the UI?
+      - DIGGER_DRIFT_REPORTER_HOSTNAME=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
     ports:
       - "3001:3000"
     depends_on:
