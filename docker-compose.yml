@@ -1,45 +1,33 @@
 services:
-  postgres:
+  postgres-orchestrator:
     image: postgres:alpine
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=CHANGE_ME
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=orchestrator
+    volumes:
+      - postgres-orchestrator-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  postgres-init:
+  postgres-statesman:
     image: postgres:alpine
-    depends_on:
-      postgres:
-        condition: service_healthy
+    ports:
+      - "5433:5432"
     environment:
-      - PGPASSWORD=CHANGE_ME
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        set -eu
-        echo "Waiting for postgres to accept connections..."
-        i=0
-        until psql -h postgres -U postgres -d postgres -c 'select 1' >/dev/null 2>&1; do
-          i=$$((i+1))
-          if [ $$i -ge 60 ]; then
-            echo 'Postgres not ready after 60s'
-            exit 1
-          fi
-          sleep 1
-        done
-
-        echo "Ensuring databases exist: orchestrator, statesman"
-        psql -h postgres -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-        SELECT 'CREATE DATABASE orchestrator' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'orchestrator')\gexec
-        SELECT 'CREATE DATABASE statesman'    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'statesman')\gexec
-        SQL
-        echo "Postgres databases ready"
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=statesman
+    volumes:
+      - postgres-statesman-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   orchestrator:
     build:
@@ -50,14 +38,30 @@ services:
     env_file:
       - backend/.env
     environment:
-      - DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/orchestrator?sslmode=disable
+      - BACKGROUND_JOBS_CLIENT_TYPE=local-exec
+      - DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@postgres-orchestrator:5432/orchestrator?sslmode=disable
+      - DIGGER_ENABLE_API_ENDPOINTS=true
+      - DIGGER_ENABLE_INTERNAL_ENDPOINTS=true
+      - DIGGER_INTERNAL_SECRET=orchestrator-secret-CHANGE_ME
+      - DIGGER_LOAD_PROJECTS_ON_PUSH=true
+      - DIGGER_PUBLIC_PATH_PREFIX=/orchestrator
+      - GITHUB_ORG=<REPLACE_ME>
+      # GitHub App Credentials
+      # - GITHUB_APP_ID=
+      # - GITHUB_APP_CLIENT_ID=
+      # - GITHUB_APP_CLIENT_SECRET=
+      # - GITHUB_APP_PRIVATE_KEY_BASE64=
+      # - GITHUB_WEBHOOK_SECRET=
+      - HOSTNAME=public-url-including-scheme-CHANGE_ME
+      - HTTP_BASIC_AUTH=true
+      - HTTP_BASIC_AUTH_PASSWORD=basic-auth-password-CHANGE_ME
+      - HTTP_BASIC_AUTH_USERNAME=admin
+      - PROJECTS_REFRESH_BIN=/app/projects_refesh_main
     ports:
       - "3000:3000"
     depends_on:
-      postgres:
+      postgres-orchestrator:
         condition: service_healthy
-      postgres-init:
-        condition: service_completed_successfully
 
   statesman:
     build:
@@ -65,32 +69,37 @@ services:
       dockerfile: Dockerfile_statesman
       args:
         COMMIT_SHA: local
-    env_file:
-      - taco/.env
     environment:
-      # Object store config
       - AWS_ACCESS_KEY_ID=minioadmin
-      - AWS_SECRET_ACCESS_KEY=CHANGE_ME
-      # Sandbox sidecar config (for remote TF/Tofu runs)
-      - OPENTACO_SANDBOX_PROVIDER=e2b
+      - AWS_ENDPOINT=http://minio:9000
+      - AWS_SECRET_ACCESS_KEY=minio-password-CHANGE_ME
+      - OPENTACO_ALLOW_X_FORWARDED_FOR=true
+      - OPENTACO_AUTHs_DISABLE=true
       - OPENTACO_E2B_SIDECAR_URL=http://sidecar:9100
-      # Databse config
-      - OPENTACO_QUERY_BACKEND=postgres
-      - OPENTACO_POSTGRES_HOST=postgres
-      - OPENTACO_POSTGRES_PORT=5432
-      - OPENTACO_POSTGRES_USER=postgres
-      - OPENTACO_POSTGRES_PASSWORD=CHANGE_ME
-      - OPENTACO_POSTGRES_DBNAME=statesman
-      - OPENTACO_POSTGRES_SSLMODE=disable
+      - OPENTACO_ENABLE_INTERNAL_ENDPOINTS=statesman-secret-CHANGE_ME
+      - OPENTACO_PORT=8080
       # Back-compat for taco/scripts/entrypoint.sh (it currently expects *_DATABASE)
       - OPENTACO_POSTGRES_DATABASE=statesman
+      # Database config
+      - OPENTACO_POSTGRES_DBNAME=statesman
+      - OPENTACO_POSTGRES_HOST=postgres-statesman
+      - OPENTACO_POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - OPENTACO_POSTGRES_PORT=5432
+      - OPENTACO_POSTGRES_SSLMODE=disable
+      - OPENTACO_POSTGRES_USER=postgres
+      - OPENTACO_PUBLIC_BASE_URL=public-url-including-scheme-CHANGE_ME
+      - OPENTACO_QUERY_BACKEND=postgres
+      - OPENTACO_S3_BUCKET=opentaco
+      - OPENTACO_S3_PREFIX=opentaco/
+      - OPENTACO_S3_REGION=us-east-1
+      - OPENTACO_SANDBOX_PROVIDER=e2b
+      - OPENTACO_SECRET_KEY=secret-CHANGE_ME
+      - OPENTACO_STORAGE=s3
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
+      postgres-statesman:
         condition: service_healthy
-      postgres-init:
-        condition: service_completed_successfully
       sidecar:
         condition: service_healthy
       minio:
@@ -108,6 +117,9 @@ services:
       - NODE_ENV=production
       - PORT=9100
       - SANDBOX_RUNNER=e2b
+      # E2B Credentials
+      # - E2B_API_KEY=
+      # - E2B_BAREBONES_TEMPLATE_ID=
     ports:
       - "9100:9100"
 
@@ -120,10 +132,22 @@ services:
     env_file:
       - ui/.env.local
     environment:
+      - ALLOWED_HOSTS=localhost,127.0.0.1,<public-url-including-scheme-CHANGE_ME>
+      - DRIFT_REPORTING_BACKEND_WEBHOOK_SECRET=drift-secret-CHANGE_ME
+      - ORCHESTRATOR_BACKEND_SECRET=orchestrator-secret-CHANGE_ME
       - ORCHESTRATOR_BACKEND_URL=http://orchestrator:3000
+      - ORCHESTRATOR_GITHUB_APP_URL=<public-url-including-scheme-CHANGE_ME>/github/setup
+      - PUBLIC_URL=public-url-including-scheme-CHANGE_ME
       - STATESMAN_BACKEND_URL=http://statesman:8080
-      - PUBLIC_URL=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
-      - ALLOWED_HOSTS=localhost,127.0.0.1
+      - STATESMAN_BACKEND_WEBHOOK_SECRET=statesman-secret-CHANGE_ME
+      - TOKENS_SERVICE_BACKEND_URL=http://token-service:8081
+      - WORKOS_REDIRECT_URI=<public-url-including-scheme-CHANGE_ME>/api/auth/callback
+      # WorkOS Credentials
+      # - WORKOS_CLIENT_ID=
+      # - WORKOS_API_KEY=
+      # - WORKOS_COOKIE_PASSWORD=
+      # - WORKOS_WEBHOOK_SECRET=
+
     ports:
       - "3030:3030"
     depends_on:
@@ -137,24 +161,39 @@ services:
       dockerfile: Dockerfile_drift
       args:
         COMMIT_SHA: local
-    # Reuse backend env for DB + shared settings.
     env_file:
       - backend/.env
     environment:
-      - DATABASE_URL=postgres://postgres:CHANGE_ME@postgres:5432/orchestrator?sslmode=disable
+      - BACKGROUND_JOBS_CLIENT_TYPE=local-exec
+      - DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@postgres-orchestrator:5432/orchestrator?sslmode=disable
+      # Embedded in job specs so CI can report drift results back.
+      - DIGGER_DRIFT_REPORTER_HOSTNAME=public-url-including-scheme-CHANGE_ME
+      - DIGGER_ENABLE_INTERNAL_ENDPOINTS=true
+      - DIGGER_ENABLE_API_ENDPOINTS=true
       # Used for drift service internal scheduling triggers.
       - DIGGER_HOSTNAME=http://drift:3000
+      - DIGGER_INTERNAL_SECRET=orchestrator-secret-CHANGE_ME
+      - DIGGER_LOAD_PROJECTS_ON_PUSH=true
+      - DIGGER_PUBLIC_PATH_PREFIX=/orchestrator
       # Auth for drift service internal endpoints (/ _internal/*).
       - DIGGER_WEBHOOK_SECRET=drift-secret-CHANGE_ME
-      # Embedded in job specs so CI can report drift results back.
-      - DIGGER_DRIFT_REPORTER_HOSTNAME=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
+      - GITHUB_ORG=github-org-CHANGE_ME
+      # GitHub App Credentials
+      # - GITHUB_APP_ID=
+      # - GITHUB_APP_CLIENT_ID=
+      # - GITHUB_APP_CLIENT_SECRET=
+      # - GITHUB_APP_PRIVATE_KEY_BASE64=
+      # - GITHUB_WEBHOOK_SECRET=
+      - HOSTNAME=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
+      - HTTP_BASIC_AUTH=true
+      - HTTP_BASIC_AUTH_PASSWORD=github-setup-basic-auth-password-CHANGE_ME
+      - HTTP_BASIC_AUTH_USERNAME=admin
+      - PROJECTS_REFRESH_BIN=/app/projects_refesh_main
     ports:
       - "3001:3000"
     depends_on:
-      postgres:
+      postgres-orchestrator:
         condition: service_healthy
-      postgres-init:
-        condition: service_completed_successfully
 
   token-service:
     build:
@@ -175,8 +214,8 @@ services:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1@sha256:13582eff79c6605a2d315bdd0e70164142ea7e98fc8411e9e10d089502a6d883
     command: server /data --console-address ":9001"
     environment:
+      - MINIO_ROOT_PASSWORD=minio-password-CHANGE_ME
       - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=CHANGE_ME
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -188,8 +227,8 @@ services:
     depends_on:
       - minio
     environment:
-      - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=CHANGE_ME
+      - MINIO_ROOT_USER=minioadmin
     entrypoint:
       - /bin/sh
       - -c
@@ -207,6 +246,10 @@ services:
         mc mb -p local/opentaco || true
 
 volumes:
+  postgres-orchestrator-data:
+    driver: local
+  postgres-statesman-data:
+    driver: local
   minio-data:
     driver: local
   token-service-data:
