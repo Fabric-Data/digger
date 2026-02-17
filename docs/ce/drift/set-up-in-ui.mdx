@@ -1,14 +1,27 @@
 ---
-title: "Set up in UI"
+title: "Drift Detection + Remediation"
 ---
 
-Configuring Drift Detection in [Digger UI](https://ui.digger.dev).
+Drift Detection + Remediation helps you continuously compare real infrastructure against your IaC definitions, detect unexpected changes, and drive remediation through the same PR-based workflow your team already uses.
 
-# Schedule
+<Note>
+  Prerequisites:
 
-You can run drift detection on pre-defined intervals (e.g. hourly or daily) - or use a custom crontab:
+  - [Set up your OpenTaco account](/ce/getting-started/account-setup)
+  - [Set up GitHub App](/ce/getting-started/github-app-setup)
+  - A working PR Automation setup with a functional GitHub Actions workflow
+</Note>
 
-![Drift UI Schedule](/images/drift-ui-schedule.png)
+## Enable drift detection
+
+To activate drift detection, you must enable it at both levels:
+
+1. In settings, toggle **Enable Slack notifications** on (this enables drift detection at the organization level).
+2. In the projects page, toggle **Drift** on for each project you want monitored.
+
+![Placeholder: drift enablement toggles screenshot](/images/placeholders/drift-enablement-toggles.png)
+
+## TODO: update this in the UI and here once drift is fixed...
 
 # Slack notifications
 
@@ -17,3 +30,8 @@ You can also configure Slack notifications via webhooks:
 ![Drift UI Slack](/images/drift-ui-slack.png)
 
 
+# Schedule
+
+You can run drift detection on pre-defined intervals (e.g. hourly or daily) - or use a custom crontab:
+
+![Drift UI Schedule](/images/drift-ui-schedule.png)

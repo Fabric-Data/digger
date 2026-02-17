@@ -2,7 +2,13 @@
 title: "State Management"
 ---
 
-In this tutorial, you will set up state management and connect it to your local terraform or opentofu.
+OpenTaco State Management helps you create and manage Terraform/OpenTofu state backends centrally, so your team can use consistent backend configuration, shared access controls, and state history across environments.
+
+OpenTaco state management implements an interface compatible with HCP Terraform, so this can be used as a drop-in replacement workflow for `tofu login` and cloud block usage.
+
+<Note>
+  Prerequisite: [Set up your OpenTaco account](./account-setup).
+</Note>
 
 If you prefer a visual walkthrough you can follow along the following loom tutorial:
 
@@ -12,22 +18,40 @@ If you prefer a visual walkthrough you can follow along the following loom tutor
 
 <Steps>
     <Step title="Create first unit">
-        Create your first unit from the UI. give it a name and hit create
+        In OpenTaco, a **unit** is a single managed state backend (workspace) for one root module/environment combination.
+
+        Create your first unit from the UI, give it a name, and click create.
     </Step>
     <Step title="Configure cloud block">
-        Configure your terraform cloud block locally by pasting it into the terraform code
+        Start with a minimal root module to verify state management end to end before wiring your full infrastructure code.
+
+        Create `main.tf`:
+
+        Your cloud block should follow this structure (replace placeholders with your real values from the unit details page):
+
+        ```hcl
+        terraform {
+          required_version = "~> 1.10.0"
+
+          cloud {
+            hostname     = "otaco.app"
+            organization = "<your-org-id>"
+
+            workspaces {
+              name = "<your-unit-id>"
+            }
+          }
+        }
+
+        resource "null_resource" "smoke_test" {}
+        ```
+
     </Step>
     <Step title="Authenticate with Opentofu">
         Using the cli you can run the following command to authenticate:
 
         ```
         tofu login otaco.app
-        ```
-
-        Or if using terraform
-
-        ```
-        terraform login otaco.app
         ```
 
         You will have to confirm and will then be redirected to a token generation page. This page
@@ -38,7 +62,7 @@ If you prefer a visual walkthrough you can follow along the following loom tutor
         ```
     </Step>
     <Step title="try to run plan and apply">
-        Using terraform or opentofu run `init`, `plan` and `apply` commands. It should all succeed to be created
+        Using `Terraform` or `OpenTofu`, run `init`, `plan`, and `apply`. It should succeed.
         If this is the case then well done! You have successfully created your first unit
     </Step>
 </Steps>
@@ -46,5 +70,5 @@ If you prefer a visual walkthrough you can follow along the following loom tutor
 
 ## Next steps
 
-Try to setup PR automation so that you can collaborate on your opentofu as a team. You can follow the guides for
-[terraform](/ce/getting-started/with-terraform), [opentofu](/ce/getting-started/with-opentofu) or [terragrunt](/ce/getting-started/with-terragrunt) respectively.
+1. If you want to use remote execution, continue with [Remote Runs (Beta)](/ce/features/remote-jobs).
+2. Otherwise, continue with [PR Automation onboarding](/ce/getting-started/github-app-setup).

@@ -4,6 +4,8 @@ title: "With OpenTofu"
 
 In this tutorial, you will set up Digger to automate OpenTofu pull requests using Github Actions
 
+This guide assumes you completed [Configure PR automation and workflows](./configure-pr-automation-workflows).
+
 **Prerequisites**
 - A GitHub repository with valid OpenTofu code
 - Your cloud provider credentials:
@@ -12,23 +14,15 @@ In this tutorial, you will set up Digger to automate OpenTofu pull requests usin
   - For Azure: [Hashicorp's Azure tutorial](https://developer.hashicorp.com/terraform/tutorials/azure-get-started/azure-build)
 
 <Steps>
-  <Step title="Create your Digger account">
+  <Step title="Prerequisite: OpenTaco account setup">
 
-Head to [otaco.app](https://otaco.app) and sign up using your preferred method.
-
-You should see an empty dashboard after you sign up.
+Complete [Set up your OpenTaco account](./account-setup) before continuing.
   </Step>
 
-  <Step title="Install the Digger GitHub App">
+  <Step title="Prerequisite: GitHub App installed">
 
-Install the Digger [GitHub App](https://github.com/apps/opentaco-cloud/installations/select_target) into your repository.
+Complete [Set up GitHub App](./github-app-setup) before continuing.
 
-<Note>
-Digger GitHub App does not need access to your cloud account, it just starts jobs in your CI. All sensitive data stays in your CI job.
-
-You can also [self-host Digger orchestrator](/ce/self-host/deploy-docker) with a private GiHub app and issue your own token
-
-</Note>
   </Step>
 
   <Step title="Create Action Secrets with cloud credentials">

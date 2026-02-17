@@ -2,7 +2,7 @@
 title: "Units"
 ---
 
-A unit is an OpenTaco workspace: the smallest deployable Terraform state plus its lock and history. Each unit tracks one Terraform state file, supports optimistic locking, and keeps a versioned history so you can restore any previous state snapshot.
+A unit is an OpenTaco workspace: the smallest managed state boundary plus its lock and history. Each unit tracks one state file, supports explicit lock/unlock operations to coordinate writers, and keeps version history so you can restore a previous snapshot.
 
 
 ## Use case for units 

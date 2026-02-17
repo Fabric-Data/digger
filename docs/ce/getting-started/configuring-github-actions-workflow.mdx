@@ -1,0 +1,187 @@
+---
+title: "Configuring the GitHub Actions workflow"
+description: "Configure authentication, IaC tool installation, cloud auth, and caching for OpenTaco PR automation"
+---
+
+Use this page to configure your `.github/workflows/digger_workflow.yml` after your smoke test passes.
+
+<Note>
+  Prerequisites:
+
+  - [Set up your OpenTaco account](./account-setup)
+  - [Set up GitHub App](./github-app-setup)
+  - [PR Automation Smoke Test](./configure-pr-automation-workflows)
+  - [Configuring digger.yml](./configuring-digger-yml)
+</Note>
+
+## 1) Authentication for OpenTaco PR automation
+
+Keep these environment variables in your Digger step so OpenTaco can process PR events and post comments:
+
+```yaml
+- uses: diggerhq/digger@vLatest
+  with:
+    digger-spec: ${{ inputs.spec }}
+  env:
+    GITHUB_CONTEXT: ${{ toJson(github) }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+## 2) Install the IaC tools you use
+
+Add the relevant setup flags in the Digger action:
+
+<Tabs>
+  <Tab title="OpenTofu (default)">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-opentofu: true
+        opentofu-version: 1.10.3
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Tab>
+  <Tab title="Terraform">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-terraform: true
+        terraform-version: 1.5.5
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Tab>
+  <Tab title="Terragrunt">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-terragrunt: true
+        terragrunt-version: 0.44.1
+        # Also install one IaC engine with Terragrunt.
+        # OpenTofu is the default recommendation:
+        setup-opentofu: true
+        opentofu-version: 1.10.3
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+
+    Terragrunt handles Terraform binary installation internally.
+  </Tab>
+</Tabs>
+
+## 3) Configure OpenTaco state access (optional)
+
+If your PR automation runs use OpenTaco State Management, configure TFE-compatible credentials in the workflow.
+
+1. Store your OpenTaco token as a GitHub Actions secret (for example `TFE_TOKEN`).
+2. Set the TFE hostname input for your IaC engine.
+3. Pass the matching TFE token input for your IaC engine.
+
+<Tabs>
+  <Tab title="OpenTofu">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-opentofu: true
+        opentofu-version: 1.10.3
+        # OpenTaco state backend hostname
+        opentofu-tfe-hostname: otaco.app
+        # Token stored in GitHub Actions secrets
+        opentofu-tfe-token: ${{ secrets.TFE_TOKEN }}
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Tab>
+  <Tab title="Terraform">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-terraform: true
+        terraform-version: 1.5.5
+        # OpenTaco state backend hostname
+        terraform-tfe-hostname: otaco.app
+        # Token stored in GitHub Actions secrets
+        terraform-tfe-token: ${{ secrets.TFE_TOKEN }}
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Tab>
+</Tabs>
+
+## 4) Authenticate to cloud providers
+
+Use one provider block per workflow.
+
+<Tabs>
+  <Tab title="AWS">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-aws: true
+        # Option A (recommended): OIDC role assumption
+        aws-role-to-assume: arn:aws:iam::123456789012:role/digger-gha-role
+        aws-region: us-east-1
+        # Option B: Static credentials
+        # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+
+    Use either static keys or OIDC role assumption in a single workflow config, not both. See [OIDC on AWS](/ce/cloud-providers/authenticating-with-oidc-on-aws).
+  </Tab>
+  <Tab title="GCP">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-google-cloud: true
+        # Service Account key JSON (mutually exclusive with workload identity provider)
+        google-auth-credentials: ${{ secrets.GCP_CREDENTIALS }}
+        # OIDC alternative:
+        # google-workload-identity-provider: projects/123456789/locations/global/workloadIdentityPools/pool/providers/provider
+        # google-service-account: digger@my-project.iam.gserviceaccount.com
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Tab>
+  <Tab title="Azure">
+    ```yaml
+    - uses: diggerhq/digger@vLatest
+      with:
+        digger-spec: ${{ inputs.spec }}
+        setup-azure: true
+        azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+        ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    ```
+  </Tab>
+</Tabs>
+
+## 5) Set up caching
+
+Start with default GitHub Actions cache behavior. If your repositories are large, add targeted caching using the guidance in [Caching Strategies](/ce/howto/caching-strategies).
+
+## Next step
+
+After updating your workflow, open a PR with a change to at least project and verify `plan` and `digger apply` still complete successfully.

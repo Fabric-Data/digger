@@ -1,38 +1,82 @@
 ---
 title: "About OpenTaco"
-description: "OpenTaco is an all-in-one Toolkit for Terraform"
+description: "Understand OpenTaco and choose the best onboarding path for your OpenTofu workflow"
 ---
 
 <Info type="info">
-  The digger project has rebranded to OpenTaco, the company behind the project
-  continues to remain Digger, these docs are being updated but you will find
-  digger and opentaco used interchangably in the docs until the rebrand is
-  complete. Apologies for the inconvenience
+  Digger has rebranded to OpenTaco. You may still see legacy "digger" naming
+  in some commands, variables, and pages while documentation is being updated.
 </Info>
-## Want to get started quickly?
+
+## What is OpenTaco?
+
+OpenTaco helps you run Terraform and OpenTofu safely across your team.
+
+It has four major capabilities:
+
+- **State management** with access controls and version history, with an HCP Terraform-compatible interface for drop-in workflows
+- **Remote runs (Beta)** that execute Terraform remotely and stream logs back, similar to HCP Terraform remote execution
+- **PR automation** for `plan`/`apply` workflows in CI (historically Digger's core focus)
+- **Drift detection + remediation** to detect infrastructure drift and close the loop through notifications and apply workflows
+
+You can adopt all four capabilities as a full platform, or start with just the subset that fits your workflow today.
+
+<Note>
+  OpenTaco is open source and self-hostable. You can run it in your own environment and keep full control over your infrastructure workflows.
+  See the [self-hosting docs](../ce/self-host/deploy-docker) for setup options.
+</Note>
+
+## Choose your onboarding path
+
+Start with the path that matches your immediate goal.
 
 <Card
-  title="Quick Start"
-  icon="lightbulb"
-  href="/ce/getting-started/with-terraform"
+  title="State Management"
+  icon="database"
+  href="../ce/getting-started/state-management"
 >
-  <p>Get started with OpenTaco in minutes.</p>
+  <p>Store OpenTofu and Terraform state centrally with cloud blocks, `tofu login`, secure access controls, and rollback support. The interface is compatible with HCP Terraform for drop-in migration paths.</p>
 </Card>
 
-## An All-in-One Terraform Toolkit
+<Card
+  title="Remote Runs (Beta)"
+  icon="terminal"
+  href="../ce/features/remote-jobs"
+>
+  <p>Run OpenTofu commands in remote execution environments similar to HCP Terraform while keeping a CLI-driven workflow (requires using OpenTaco State Management).</p>
+</Card>
 
-OpenTaco is a comprehensive solution that brings together everything you need to manage Terraform workflows effectively:
+<Card
+  title="PR Automation"
+  icon="github"
+  href="../ce/getting-started/github-app-setup"
+>
+  <p>Recommended for most teams and historically Digger's core focus. Run plans on pull requests and apply safely in CI across OpenTofu, Terraform, and Terragrunt repositories.</p>
+</Card>
 
-**State Management**: Built-in state management with RBAC, validation, and cross-account access. The state manager provides versioning and rollback capabilities.
+<Card
+  title="Drift Detection + Remediation"
+  icon="triangle-exclamation"
+  href="../ce/drift/set-up-in-ui"
+>
+  <p>Detect drift on a schedule, notify via Slack or GitHub Issues, and remediate with the same command workflow your team already uses.</p>
+</Card>
 
-**PR Automation**: Automatically run `terraform plan` on pull requests and post results as comments. Apply changes automatically within the PR, configure apply-on-merge workflows, and enforce approval requirements. OpenTaco handles PR-level locking to prevent conflicts between concurrent changes.
+## How these paths fit together
 
-**Remote Runs**: Execute Terraform commands remotely and stream logs back to your terminal or CI system (using the TFE protocol)
+These paths are not mutually exclusive. Many teams start with **PR Automation**, add **Drift Detection + Remediation** next, and combine with **State Management** as they mature.
 
-**Drift Detection**: Continuously monitor your infrastructure for configuration drift. Schedule automated scans that detect changes and create GitHub issues for remediation.
+## Common capability combinations
 
-## For AI Agents
+| Combination | Outcome |
+| --- | --- |
+| All capabilities | Full platform workflow with centralized state, CI automation, drift operations, and remote execution. |
+| PR Automation only | Safer plan/apply collaboration in pull requests without changing your existing state backend. |
+| State Management only | Centralized state with access controls and version history while keeping your current CI process. |
+| State Management + Remote Runs (Beta) | Terraform Cloud-like remote execution with a CLI-first workflow. |
 
-If you're using an AI coding agent that supports MCP (Model Context Protocol), you can connect it to the OpenTaco documentation server for search across the full knowledge base, code examples, and API references:
+## For AI agents
+
+If your coding agent supports MCP (Model Context Protocol), connect it to the OpenTaco docs server for high-quality docs retrieval during coding tasks:
 
 **MCP endpoint**: [https://docs.opentaco.dev/mcp](https://docs.opentaco.dev/mcp)
