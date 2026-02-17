@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/diggerhq/digger/backend/models"
@@ -12,7 +14,56 @@ import (
 	"github.com/diggerhq/digger/libs/ci/github"
 	"github.com/diggerhq/digger/libs/digger_config"
 	orchestrator_scheduler "github.com/diggerhq/digger/libs/scheduler"
+	"github.com/diggerhq/digger/libs/spec"
 )
+
+func IsDriftStatusJob(job *models.DiggerJob) (bool, error) {
+	if job == nil || job.Batch == nil {
+		return false, nil
+	}
+
+	if job.Batch.BatchType != orchestrator_scheduler.DiggerCommandPlan || job.Batch.PrNumber != 0 {
+		return false, nil
+	}
+
+	var vcsSpec spec.VcsSpec
+	err := json.Unmarshal(job.SerializedVcsSpec, &vcsSpec)
+	if err != nil {
+		return false, err
+	}
+
+	return strings.EqualFold(vcsSpec.VcsType, "noop"), nil
+}
+
+func ProjectDriftStateMachineApply(project models.Project, tfplan string, resourcesCreated uint, resourcesUpdated uint, resourcesDeleted uint) error {
+	isEmptyPlan := resourcesCreated == 0 && resourcesUpdated == 0 && resourcesDeleted == 0
+	wasEmptyPlan := project.DriftToCreate == 0 && project.DriftToUpdate == 0 && project.DriftToDelete == 0
+	if isEmptyPlan {
+		project.DriftStatus = models.DriftStatusNoDrift
+	}
+	if !isEmptyPlan && wasEmptyPlan {
+		project.DriftStatus = models.DriftStatusNewDrift
+	}
+	if !isEmptyPlan && !wasEmptyPlan {
+		if project.DriftTerraformPlan != tfplan {
+			if project.DriftStatus == models.DriftStatusAcknowledgeDrift {
+				project.DriftStatus = models.DriftStatusNewDrift
+			}
+		}
+	}
+
+	project.DriftTerraformPlan = tfplan
+	project.DriftToCreate = resourcesCreated
+	project.DriftToUpdate = resourcesUpdated
+	project.DriftToDelete = resourcesDeleted
+	project.LatestDriftCheck = time.Now()
+	result := models.DB.GormDB.Save(&project)
+	if result.Error != nil {
+		return result.Error
+	}
+
+	return nil
+}
 
 func GenerateChecksSummaryForBatch(batch *models.DiggerBatch) (string, error) {
 	summaryEndpoint := os.Getenv("DIGGER_AI_SUMMARY_ENDPOINT")
