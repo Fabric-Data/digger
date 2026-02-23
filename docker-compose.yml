@@ -1,6 +1,14 @@
+# Profile-based startup guide:
+# - Start platform only: docker compose --profile platform up -d
+# - Start OpenTaco app only: docker compose --profile opentaco up -d
+# - Start everything: docker compose --profile all up -d
 services:
+  # NOTE: These databases could all be created within a single postgres instance, but that would require
+  # a separate init process to create the databses. By creating one service per db, we can use the
+  # DB which is created upon startup.
   postgres-orchestrator:
     image: postgres:alpine
+    profiles: ["platform", "all"]
     ports:
       - "5432:5432"
     environment:
@@ -16,6 +24,7 @@ services:
 
   postgres-statesman:
     image: postgres:alpine
+    profiles: ["platform", "all"]
     ports:
       - "5433:5432"
     environment:
@@ -29,12 +38,29 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-token-service:
+    image: postgres:alpine
+    profiles: ["platform", "all"]
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=token_service
+    volumes:
+      - postgres-token-service-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   orchestrator:
     build:
       context: .
       dockerfile: Dockerfile_backend
       args:
         COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
     env_file:
       - backend/.env
     environment:
@@ -69,6 +95,7 @@ services:
       dockerfile: Dockerfile_statesman
       args:
         COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
     environment:
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_ENDPOINT=http://minio:9000
@@ -111,6 +138,7 @@ services:
     build:
       context: sandbox-sidecar
       dockerfile: Dockerfile_sidecar
+    profiles: ["opentaco", "all"]
     env_file:
       - sandbox-sidecar/.env
     environment:
@@ -129,6 +157,7 @@ services:
       dockerfile: Dockerfile_ui
       args:
         COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
     env_file:
       - ui/.env.local
     environment:
@@ -161,6 +190,7 @@ services:
       dockerfile: Dockerfile_drift
       args:
         COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
     env_file:
       - backend/.env
     environment:
@@ -201,10 +231,20 @@ services:
       dockerfile: Dockerfile_token_service
       args:
         COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    environment:
+      - OPENTACO_TOKEN_QUERY_BACKEND=postgres
+      - OPENTACO_TOKEN_POSTGRES_DBNAME=token_service
+      - OPENTACO_TOKEN_POSTGRES_HOST=postgres-token-service
+      - OPENTACO_TOKEN_POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - OPENTACO_TOKEN_POSTGRES_PORT=5432
+      - OPENTACO_TOKEN_POSTGRES_SSLMODE=disable
+      - OPENTACO_TOKEN_POSTGRES_USER=postgres
     ports:
       - "8081:8081"
-    volumes:
-      - token-service-data:/app/data
+    depends_on:
+      postgres-token-service:
+        condition: service_healthy
 
   minio:
     # NOTE: MinIO's upstream distribution/licensing has shifted away from a
@@ -212,6 +252,7 @@ services:
     # updates (e.g. CVE patching) beyond this pinned image, you may need to
     # migrate to AIStor (paid license) or another S3-compatible alternative.
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1@sha256:13582eff79c6605a2d315bdd0e70164142ea7e98fc8411e9e10d089502a6d883
+    profiles: ["platform", "all"]
     command: server /data --console-address ":9001"
     environment:
       - MINIO_ROOT_PASSWORD=minio-password-CHANGE_ME
@@ -224,10 +265,11 @@ services:
 
   minio-init:
     image: minio/mc:RELEASE.2025-08-13T08-35-41Z-cpuv1@sha256:95b5f3f7969a5c5a9f3a700ba72d5c84172819e13385aaf916e237cf111ab868
+    profiles: ["platform", "all"]
     depends_on:
       - minio
     environment:
-      - MINIO_ROOT_PASSWORD=CHANGE_ME
+      - MINIO_ROOT_PASSWORD=minio-password-CHANGE_ME
       - MINIO_ROOT_USER=minioadmin
     entrypoint:
       - /bin/sh
@@ -250,7 +292,7 @@ volumes:
     driver: local
   postgres-statesman-data:
     driver: local
-  minio-data:
+  postgres-token-service-data:
     driver: local
-  token-service-data:
+  minio-data:
     driver: local
