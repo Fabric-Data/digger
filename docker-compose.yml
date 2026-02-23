@@ -1,0 +1,298 @@
+# Profile-based startup guide:
+# - Start platform only: docker compose --profile platform up -d
+# - Start OpenTaco app only: docker compose --profile opentaco up -d
+# - Start everything: docker compose --profile all up -d
+services:
+  # NOTE: These databases could all be created within a single postgres instance, but that would require
+  # a separate init process to create the databses. By creating one service per db, we can use the
+  # DB which is created upon startup.
+  postgres-orchestrator:
+    image: postgres:alpine
+    profiles: ["platform", "all"]
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=orchestrator
+    volumes:
+      - postgres-orchestrator-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-statesman:
+    image: postgres:alpine
+    profiles: ["platform", "all"]
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=statesman
+    volumes:
+      - postgres-statesman-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-token-service:
+    image: postgres:alpine
+    profiles: ["platform", "all"]
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - POSTGRES_DB=token_service
+    volumes:
+      - postgres-token-service-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile_backend
+      args:
+        COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    env_file:
+      - backend/.env
+    environment:
+      - BACKGROUND_JOBS_CLIENT_TYPE=local-exec
+      - DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@postgres-orchestrator:5432/orchestrator?sslmode=disable
+      - DIGGER_ENABLE_API_ENDPOINTS=true
+      - DIGGER_ENABLE_INTERNAL_ENDPOINTS=true
+      - DIGGER_INTERNAL_SECRET=orchestrator-secret-CHANGE_ME
+      - DIGGER_LOAD_PROJECTS_ON_PUSH=true
+      - DIGGER_PUBLIC_PATH_PREFIX=/orchestrator
+      - GITHUB_ORG=<REPLACE_ME>
+      # GitHub App Credentials
+      # - GITHUB_APP_ID=
+      # - GITHUB_APP_CLIENT_ID=
+      # - GITHUB_APP_CLIENT_SECRET=
+      # - GITHUB_APP_PRIVATE_KEY_BASE64=
+      # - GITHUB_WEBHOOK_SECRET=
+      - HOSTNAME=public-url-including-scheme-CHANGE_ME
+      - HTTP_BASIC_AUTH=true
+      - HTTP_BASIC_AUTH_PASSWORD=basic-auth-password-CHANGE_ME
+      - HTTP_BASIC_AUTH_USERNAME=admin
+      - PROJECTS_REFRESH_BIN=/app/projects_refesh_main
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres-orchestrator:
+        condition: service_healthy
+
+  statesman:
+    build:
+      context: taco
+      dockerfile: Dockerfile_statesman
+      args:
+        COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    environment:
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_ENDPOINT=http://minio:9000
+      - AWS_SECRET_ACCESS_KEY=minio-password-CHANGE_ME
+      - OPENTACO_ALLOW_X_FORWARDED_FOR=true
+      - OPENTACO_AUTHs_DISABLE=true
+      - OPENTACO_E2B_SIDECAR_URL=http://sidecar:9100
+      - OPENTACO_ENABLE_INTERNAL_ENDPOINTS=statesman-secret-CHANGE_ME
+      - OPENTACO_PORT=8080
+      # Back-compat for taco/scripts/entrypoint.sh (it currently expects *_DATABASE)
+      - OPENTACO_POSTGRES_DATABASE=statesman
+      # Database config
+      - OPENTACO_POSTGRES_DBNAME=statesman
+      - OPENTACO_POSTGRES_HOST=postgres-statesman
+      - OPENTACO_POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - OPENTACO_POSTGRES_PORT=5432
+      - OPENTACO_POSTGRES_SSLMODE=disable
+      - OPENTACO_POSTGRES_USER=postgres
+      - OPENTACO_PUBLIC_BASE_URL=public-url-including-scheme-CHANGE_ME
+      - OPENTACO_QUERY_BACKEND=postgres
+      - OPENTACO_S3_BUCKET=opentaco
+      - OPENTACO_S3_PREFIX=opentaco/
+      - OPENTACO_S3_REGION=us-east-1
+      - OPENTACO_SANDBOX_PROVIDER=e2b
+      - OPENTACO_SECRET_KEY=secret-CHANGE_ME
+      - OPENTACO_STORAGE=s3
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-statesman:
+        condition: service_healthy
+      sidecar:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+
+  sidecar:
+    build:
+      context: sandbox-sidecar
+      dockerfile: Dockerfile_sidecar
+    profiles: ["opentaco", "all"]
+    env_file:
+      - sandbox-sidecar/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=9100
+      - SANDBOX_RUNNER=e2b
+      # E2B Credentials
+      # - E2B_API_KEY=
+      # - E2B_BAREBONES_TEMPLATE_ID=
+    ports:
+      - "9100:9100"
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile_ui
+      args:
+        COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    env_file:
+      - ui/.env.local
+    environment:
+      - ALLOWED_HOSTS=localhost,127.0.0.1,<public-url-including-scheme-CHANGE_ME>
+      - DRIFT_REPORTING_BACKEND_WEBHOOK_SECRET=drift-secret-CHANGE_ME
+      - ORCHESTRATOR_BACKEND_SECRET=orchestrator-secret-CHANGE_ME
+      - ORCHESTRATOR_BACKEND_URL=http://orchestrator:3000
+      - ORCHESTRATOR_GITHUB_APP_URL=<public-url-including-scheme-CHANGE_ME>/github/setup
+      - PUBLIC_URL=public-url-including-scheme-CHANGE_ME
+      - STATESMAN_BACKEND_URL=http://statesman:8080
+      - STATESMAN_BACKEND_WEBHOOK_SECRET=statesman-secret-CHANGE_ME
+      - TOKENS_SERVICE_BACKEND_URL=http://token-service:8081
+      - WORKOS_REDIRECT_URI=<public-url-including-scheme-CHANGE_ME>/api/auth/callback
+      # WorkOS Credentials
+      # - WORKOS_CLIENT_ID=
+      # - WORKOS_API_KEY=
+      # - WORKOS_COOKIE_PASSWORD=
+      # - WORKOS_WEBHOOK_SECRET=
+
+    ports:
+      - "3030:3030"
+    depends_on:
+      - orchestrator
+      - statesman
+      - token-service
+
+  drift:
+    build:
+      context: .
+      dockerfile: Dockerfile_drift
+      args:
+        COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    env_file:
+      - backend/.env
+    environment:
+      - BACKGROUND_JOBS_CLIENT_TYPE=local-exec
+      - DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@postgres-orchestrator:5432/orchestrator?sslmode=disable
+      # Embedded in job specs so CI can report drift results back.
+      - DIGGER_DRIFT_REPORTER_HOSTNAME=public-url-including-scheme-CHANGE_ME
+      - DIGGER_ENABLE_INTERNAL_ENDPOINTS=true
+      - DIGGER_ENABLE_API_ENDPOINTS=true
+      # Used for drift service internal scheduling triggers.
+      - DIGGER_HOSTNAME=http://drift:3000
+      - DIGGER_INTERNAL_SECRET=orchestrator-secret-CHANGE_ME
+      - DIGGER_LOAD_PROJECTS_ON_PUSH=true
+      - DIGGER_PUBLIC_PATH_PREFIX=/orchestrator
+      # Auth for drift service internal endpoints (/ _internal/*).
+      - DIGGER_WEBHOOK_SECRET=drift-secret-CHANGE_ME
+      - GITHUB_ORG=github-org-CHANGE_ME
+      # GitHub App Credentials
+      # - GITHUB_APP_ID=
+      # - GITHUB_APP_CLIENT_ID=
+      # - GITHUB_APP_CLIENT_SECRET=
+      # - GITHUB_APP_PRIVATE_KEY_BASE64=
+      # - GITHUB_WEBHOOK_SECRET=
+      - HOSTNAME=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
+      - HTTP_BASIC_AUTH=true
+      - HTTP_BASIC_AUTH_PASSWORD=github-setup-basic-auth-password-CHANGE_ME
+      - HTTP_BASIC_AUTH_USERNAME=admin
+      - PROJECTS_REFRESH_BIN=/app/projects_refesh_main
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres-orchestrator:
+        condition: service_healthy
+
+  token-service:
+    build:
+      context: taco
+      dockerfile: Dockerfile_token_service
+      args:
+        COMMIT_SHA: local
+    profiles: ["opentaco", "all"]
+    environment:
+      - OPENTACO_TOKEN_QUERY_BACKEND=postgres
+      - OPENTACO_TOKEN_POSTGRES_DBNAME=token_service
+      - OPENTACO_TOKEN_POSTGRES_HOST=postgres-token-service
+      - OPENTACO_TOKEN_POSTGRES_PASSWORD=postgres-password-CHANGE_ME
+      - OPENTACO_TOKEN_POSTGRES_PORT=5432
+      - OPENTACO_TOKEN_POSTGRES_SSLMODE=disable
+      - OPENTACO_TOKEN_POSTGRES_USER=postgres
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres-token-service:
+        condition: service_healthy
+
+  minio:
+    # NOTE: MinIO's upstream distribution/licensing has shifted away from a
+    # widely-supported open-source path for newer releases. If you need ongoing
+    # updates (e.g. CVE patching) beyond this pinned image, you may need to
+    # migrate to AIStor (paid license) or another S3-compatible alternative.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1@sha256:13582eff79c6605a2d315bdd0e70164142ea7e98fc8411e9e10d089502a6d883
+    profiles: ["platform", "all"]
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_PASSWORD=minio-password-CHANGE_ME
+      - MINIO_ROOT_USER=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z-cpuv1@sha256:95b5f3f7969a5c5a9f3a700ba72d5c84172819e13385aaf916e237cf111ab868
+    profiles: ["platform", "all"]
+    depends_on:
+      - minio
+    environment:
+      - MINIO_ROOT_PASSWORD=minio-password-CHANGE_ME
+      - MINIO_ROOT_USER=minioadmin
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        # Wait for MinIO to accept connections before creating buckets.
+        i=0
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          i=$$((i+1))
+          if [ $$i -ge 60 ]; then
+            echo 'MinIO not ready after 60s'
+            exit 1
+          fi
+          sleep 1
+        done
+        mc mb -p local/opentaco || true
+
+volumes:
+  postgres-orchestrator-data:
+    driver: local
+  postgres-statesman-data:
+    driver: local
+  postgres-token-service-data:
+    driver: local
+  minio-data:
+    driver: local

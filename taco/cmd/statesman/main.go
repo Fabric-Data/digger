@@ -43,6 +43,17 @@ func main() {
 	slog.Info("Starting OpenTaco Statesman service")
 
 	// Load configuration from environment variables into our struct.
+	// This handles a historical bug where there was a mismatch between usage of OPENTACO_POSTGRES_DATABASE and OPENTACO_POSTGRES_DBNAME
+	if os.Getenv("OPENTACO_POSTGRES_DBNAME") == "" {
+		if legacyDB := os.Getenv("OPENTACO_POSTGRES_DATABASE"); legacyDB != "" {
+			if setErr := os.Setenv("OPENTACO_POSTGRES_DBNAME", legacyDB); setErr != nil {
+				slog.Error("Failed to map legacy postgres database env var", "error", setErr)
+				os.Exit(1)
+			}
+			slog.Warn("Using legacy OPENTACO_POSTGRES_DATABASE; please set OPENTACO_POSTGRES_DBNAME")
+		}
+	}
+
 	var queryCfg query.Config
 	err := envconfig.Process("opentaco", &queryCfg) // The prefix "TACO" will be used for all vars.
 	if err != nil {
