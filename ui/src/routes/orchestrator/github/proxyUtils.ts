@@ -51,3 +51,19 @@ export function getOrchestratorBackendUrl(): string {
   }
   return base.replace(/\/+$/, '')
 }
+
+export async function proxyOrchestratorGitHubWebhook(request: Request): Promise<Response> {
+  try {
+    const backendUrl = getOrchestratorBackendUrl()
+    return await fetch(`${backendUrl}/github/webhook`, {
+      method: 'POST',
+      headers: request.headers,
+      body: request.body,
+      // @ts-expect-error: 'duplex' is required by Node/undici for streaming bodies
+      duplex: 'half',
+    })
+  } catch (error) {
+    console.error('Error proxying GitHub webhook:', error)
+    return new Response('Internal server error', { status: 500 })
+  }
+}
