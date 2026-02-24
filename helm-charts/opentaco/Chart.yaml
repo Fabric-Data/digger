@@ -15,14 +15,6 @@ appVersion: "0.1.0"
 #   - Taco UI (React frontend)
 
 dependencies:
-  # Optional PostgreSQL - disable if using Cloud SQL
-  - name: cloudnative-pg
-    version: "~0.22.0"
-    repository: https://cloudnative-pg.github.io/charts
-    condition: postgresql.enabled
-    tags:
-      - database
-
   # Taco Orchestrator - terraform orchestration backend
   - name: taco-orchestrator
     version: "0.1.0"

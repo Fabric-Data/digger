@@ -1,0 +1,23 @@
+{{- if and .Values.postgresql.enabled .Values.postgresql.sharedCluster.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.postgresql.sharedCluster.name }}
+  labels:
+    {{- include "opentaco-platform-reference.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.postgresql.sharedCluster.instances }}
+  storage:
+    size: {{ .Values.postgresql.sharedCluster.storage.size }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgresql.credentials.orchestrator.database }}
+      owner: {{ .Values.postgresql.credentials.orchestrator.username }}
+      secret:
+        name: {{ .Values.postgresql.credentials.orchestrator.secretName }}
+      postInitSQL:
+        - CREATE ROLE {{ .Values.postgresql.credentials.statesman.username }} LOGIN PASSWORD '{{ .Values.postgresql.credentials.statesman.password | replace "'" "''" }}';
+        - CREATE ROLE {{ .Values.postgresql.credentials.token.username }} LOGIN PASSWORD '{{ .Values.postgresql.credentials.token.password | replace "'" "''" }}';
+        - CREATE DATABASE {{ .Values.postgresql.credentials.statesman.database }} OWNER {{ .Values.postgresql.credentials.statesman.username }};
+        - CREATE DATABASE {{ .Values.postgresql.credentials.token.database }} OWNER {{ .Values.postgresql.credentials.token.username }};
+{{- end }}
