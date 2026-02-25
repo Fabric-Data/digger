@@ -15,7 +15,7 @@ It installs:
 CNPG note:
 - CNPG can auto-generate the bootstrap app secret (`<cluster>-app`) when no bootstrap secret is provided.
 - This chart creates explicit per-service app secrets so the `opentaco` subcharts can reference stable, service-specific credentials.
-- Secrets include `database-url` and are intended to be consumed via each service chart's `database.auth.urlSecretRef` mode.
+- Secrets include structured postgres keys (`host`, `port`, `database`, `username`, `password`, `sslmode`) and are intended to be consumed via each service chart's `database.existingSecret` + `database.secretKeys` settings.
 
 MinIO defaults:
 - Service: `minio.opentaco.svc.cluster.local:9000`
