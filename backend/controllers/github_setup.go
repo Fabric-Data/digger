@@ -36,25 +36,11 @@ func GithubAppSetup(c *gin.Context) {
 		Webhook               *githubWebhook    `json:"hook_attributes"`
 	}
 
-	host := os.Getenv("HOSTNAME")
-	// When the backend is deployed behind a reverse proxy (or behind the UI proxy),
-	// the inbound request Host/TLS reflects the internal hop, not the public origin.
-	// The GitHub App manifest flow requires public callback/webhook URLs, so we
-	// prefer X-Forwarded-Host/Proto when present to construct externally reachable
-	// URLs.
-	forwardedHost := c.Request.Header.Get("X-Forwarded-Host")
-	forwardedProto := c.Request.Header.Get("X-Forwarded-Proto")
-	if forwardedHost != "" {
-		if forwardedProto == "" {
-			forwardedProto = "https"
-		}
-		host = fmt.Sprintf("%s://%s", forwardedProto, forwardedHost)
-	} else if host == "" {
-		scheme := "http"
-		if c.Request.TLS != nil {
-			scheme = "https"
-		}
-		host = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	host := utils.GetPublicBaseURL()
+	if host == "" {
+		slog.Error("PUBLIC_BASE_URL and HOSTNAME are not set")
+		c.String(http.StatusInternalServerError, "PUBLIC_BASE_URL (or legacy HOSTNAME) must be set to the public URL (for example: https://app.example.com)")
+		return
 	}
 	publicPrefix := utils.NormalizePublicPathPrefix(os.Getenv("DIGGER_PUBLIC_PATH_PREFIX"))
 	manifest := &githubAppRequest{

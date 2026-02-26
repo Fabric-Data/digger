@@ -194,7 +194,6 @@ services:
     env_file:
       - backend/.env
     environment:
-      - BACKGROUND_JOBS_CLIENT_TYPE=local-exec
       - DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@postgres-orchestrator:5432/orchestrator?sslmode=disable
       # Embedded in job specs so CI can report drift results back.
       - DIGGER_DRIFT_REPORTER_HOSTNAME=public-url-including-scheme-CHANGE_ME
@@ -203,7 +202,6 @@ services:
       # Used for drift service internal scheduling triggers.
       - DIGGER_HOSTNAME=http://drift:3000
       - DIGGER_INTERNAL_SECRET=orchestrator-secret-CHANGE_ME
-      - DIGGER_LOAD_PROJECTS_ON_PUSH=true
       - DIGGER_PUBLIC_PATH_PREFIX=/orchestrator
       # Auth for drift service internal endpoints (/ _internal/*).
       - DIGGER_WEBHOOK_SECRET=drift-secret-CHANGE_ME
@@ -218,7 +216,6 @@ services:
       - HTTP_BASIC_AUTH=true
       - HTTP_BASIC_AUTH_PASSWORD=github-setup-basic-auth-password-CHANGE_ME
       - HTTP_BASIC_AUTH_USERNAME=admin
-      - PROJECTS_REFRESH_BIN=/app/projects_refesh_main
     ports:
       - "3001:3000"
     depends_on:

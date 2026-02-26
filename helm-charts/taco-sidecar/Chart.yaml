@@ -1,0 +1,14 @@
+apiVersion: v2
+name: taco-sidecar
+description: Sandbox sidecar service for OpenTaco remote Terraform/OpenTofu runs
+type: application
+version: 0.1.2
+appVersion: "0.1.0.1"
+keywords:
+  - terraform
+  - opentofu
+  - infrastructure
+  - e2b
+maintainers:
+  - name: Digger Team
+    email: hello@digger.dev
