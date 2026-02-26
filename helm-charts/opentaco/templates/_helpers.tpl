@@ -47,30 +47,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "opentaco.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Database host - returns the appropriate database host based on configuration
-*/}}
-{{- define "opentaco.database.host" -}}
-{{- if .Values.cloudSql.enabled -}}
-127.0.0.1
-{{- else if .Values.postgresql.enabled -}}
-{{ .Release.Name }}-postgresql
-{{- else -}}
-{{- required "Either postgresql.enabled or cloudSql.enabled must be true, or provide external database host" .Values.externalDatabase.host -}}
-{{- end -}}
-{{- end }}
-
-{{/*
-Database port
-*/}}
-{{- define "opentaco.database.port" -}}
-{{- if .Values.cloudSql.enabled -}}
-5432
-{{- else if .Values.postgresql.enabled -}}
-5432
-{{- else -}}
-{{ .Values.externalDatabase.port | default 5432 }}
-{{- end -}}
-{{- end }}
-

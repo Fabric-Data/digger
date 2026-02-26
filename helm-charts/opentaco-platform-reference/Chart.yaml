@@ -1,0 +1,21 @@
+apiVersion: v2
+name: opentaco-platform-reference
+description: Reference-only platform add-ons for quick OpenTaco bootstrap
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+# This chart is intentionally a reference implementation to bootstrap a working
+# environment quickly. It is not a production platform blueprint.
+
+dependencies:
+  - name: traefik
+    version: "~34.4.0"
+    repository: https://traefik.github.io/charts
+    condition: traefik.enabled
+
+  - name: cloudnative-pg
+    alias: cnpg
+    version: "~0.22.0"
+    repository: https://cloudnative-pg.github.io/charts
+    condition: cnpg.enabled

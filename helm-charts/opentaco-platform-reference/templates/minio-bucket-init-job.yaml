@@ -1,0 +1,50 @@
+{{- if and .Values.minio.enabled (gt (len .Values.minio.buckets) 0) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "opentaco-platform-reference.minio.fullname" . }}-bucket-init
+  labels:
+    {{- include "opentaco-platform-reference.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "opentaco-platform-reference.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: "{{ .Values.minio.mcImage.repository }}:{{ .Values.minio.mcImage.tag }}"
+          imagePullPolicy: {{ .Values.minio.mcImage.pullPolicy }}
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+                  key: rootUser
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+                  key: rootPassword
+          command:
+            - /bin/sh
+            - -c
+            - |
+              i=0
+              until mc alias set local http://{{ include "opentaco-platform-reference.minio.fullname" . }}:{{ .Values.minio.service.apiPort }} "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                i=$((i+1))
+                if [ $i -ge 120 ]; then
+                  echo "MinIO not ready after 120s"
+                  exit 1
+                fi
+                sleep 1
+              done
+{{- range .Values.minio.buckets }}
+              mc mb -p local/{{ . }} || true
+{{- end }}
+{{- end }}

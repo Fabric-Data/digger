@@ -1,16 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "taco-orchestrator.name" -}}
+{{- define "taco-sidecar.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
 */}}
-{{- define "taco-orchestrator.fullname" -}}
+{{- define "taco-sidecar.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +24,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "taco-orchestrator.chart" -}}
+{{- define "taco-sidecar.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "taco-orchestrator.labels" -}}
-helm.sh/chart: {{ include "taco-orchestrator.chart" . }}
-{{ include "taco-orchestrator.selectorLabels" . }}
+{{- define "taco-sidecar.labels" -}}
+helm.sh/chart: {{ include "taco-sidecar.chart" . }}
+{{ include "taco-sidecar.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,18 +43,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "taco-orchestrator.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "taco-orchestrator.name" . }}
+{{- define "taco-sidecar.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "taco-sidecar.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "taco-orchestrator.serviceAccountName" -}}
-{{- if .Values.digger.serviceAccount.name }}
-{{- .Values.digger.serviceAccount.name }}
-{{- else }}
-{{- include "taco-orchestrator.fullname" . }}
-{{- end }}
 {{- end }}

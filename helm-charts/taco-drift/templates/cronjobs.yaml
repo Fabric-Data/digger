@@ -1,0 +1,97 @@
+{{- if .Values.drift.cronjobs.enabled }}
+{{- $driftSecretName := "" -}}
+{{- if .Values.drift.secret.useExistingSecret }}
+{{- $driftSecretName = (.Values.drift.secret.existingSecretName | default "drift-secrets") -}}
+{{- else }}
+{{- $driftSecretName = printf "%s-secret" (include "digger-drift.fullname" .) -}}
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "digger-drift.fullname" . }}-process-drift
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "digger-drift.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: cronjob-process-drift
+spec:
+  schedule: "* * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ include "digger-drift.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: cronjob-process-drift
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: process-drift
+              image: curlimages/curl:8.5.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -X POST \
+                    -H "Content-Type: application/json" \
+                    -H "Authorization: Bearer ${DIGGER_WEBHOOK_SECRET}" \
+                    -d "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+                    -w "\nHTTP Status: %{http_code}\n" \
+                    --max-time 10 \
+                    "http://{{ include "digger-drift.fullname" . }}:{{ .Values.drift.service.port }}/_internal/process_drift"
+              env:
+                - name: DIGGER_WEBHOOK_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $driftSecretName }}
+                      key: DIGGER_WEBHOOK_SECRET
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "digger-drift.fullname" . }}-process-notifications
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "digger-drift.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: cronjob-process-notifications
+spec:
+  schedule: "* * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: {{ include "digger-drift.name" . }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: cronjob-process-notifications
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: process-notifications
+              image: curlimages/curl:8.5.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -X POST \
+                    -H "Content-Type: application/json" \
+                    -H "Authorization: Bearer ${DIGGER_WEBHOOK_SECRET}" \
+                    -d "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+                    -w "\nHTTP Status: %{http_code}\n" \
+                    --max-time 5 \
+                    "http://{{ include "digger-drift.fullname" . }}:{{ .Values.drift.service.port }}/_internal/process_notifications"
+              env:
+                - name: DIGGER_WEBHOOK_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $driftSecretName }}
+                      key: DIGGER_WEBHOOK_SECRET
+{{- end }}

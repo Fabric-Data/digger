@@ -33,6 +33,10 @@ ui:
   # Environment configuration
   # Creates environment variables for the UI service
   env:
+    # Public URL for UI links and hostname-derived instructions
+    # Creates: PUBLIC_URL
+    publicUrl: ""  # PUBLIC_URL (e.g., https://your-domain.com)
+
     # Allowed hosts (comma-separated)
     # Creates: ALLOWED_HOSTS
     allowedHosts: ""  # ALLOWED_HOSTS
@@ -56,7 +60,8 @@ ui:
     # Backend service URLs (for in-cluster communication)
     # Creates: ORCHESTRATOR_BACKEND_URL, ORCHESTRATOR_BACKEND_SECRET,
     #          DRIFT_REPORTING_BACKEND_URL, DRIFT_REPORTING_BACKEND_WEBHOOK_SECRET,
-    #          STATESMAN_BACKEND_URL, STATESMAN_BACKEND_WEBHOOK_SECRET
+    #          STATESMAN_BACKEND_URL, STATESMAN_BACKEND_WEBHOOK_SECRET,
+    #          TOKENS_SERVICE_BACKEND_URL
     backends:
       # Orchestrator (Digger Backend)
       orchestratorUrl: ""           # ORCHESTRATOR_BACKEND_URL (e.g., http://opentaco-taco-orchestrator-web:3000)
@@ -69,6 +74,9 @@ ui:
       # Statesman
       statesmanUrl: ""              # STATESMAN_BACKEND_URL (e.g., http://opentaco-statesman:8080) -> the statesman service
       statesmanWebhookSecret: ""    # STATESMAN_BACKEND_WEBHOOK_SECRET
+
+      # Token Service
+      tokensServiceUrl: ""          # TOKENS_SERVICE_BACKEND_URL (e.g., http://opentaco-taco-token-service:8081)
 
   # Custom environment variables
   customEnv: []

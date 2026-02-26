@@ -77,11 +77,20 @@ taco:
   # This is the public URL where OpenTaco is accessible (used as JWT issuer)
   publicBaseUrl: "http://localhost:8080"  # OPENTACO_PUBLIC_BASE_URL
 
+  # Trust X-Forwarded-* headers for public URL generation
+  # Creates: OPENTACO_ALLOW_X_FORWARDED_FOR
+  allowXForwardedFor: false
+
   # OAuth Configuration
   # Creates: OPENTACO_OAUTH_STATE_KEY
   # IMPORTANT: Set this to a random 32-character string in production for security!
   # Used to encrypt OAuth state parameters during PKCE flow
   oauthStateKey: ""            # OPENTACO_OAUTH_STATE_KEY (32+ char random string, REQUIRED for production)
+
+  # URL signing secret
+  # Creates: OPENTACO_SECRET_KEY
+  # Used to sign TFE upload/download URLs and log stream tokens.
+  secretKey: ""               # OPENTACO_SECRET_KEY (required for remote backend operations)
 
   # Query Backend Configuration
   # Creates: OPENTACO_QUERY_BACKEND

@@ -99,6 +99,11 @@ drift:
     githubAppPrivateKeyBase64: ""      # GITHUB_APP_PRIVATE_KEY_BASE64
     sentryDsn: ""                      # SENTRY_DSN (optional)
 
+  # CronJob configuration for automated drift processing
+  # These cronjobs trigger drift processing and notifications every minute.
+  cronjobs:
+    enabled: false
+
 # Global configuration (optional)
 global:
   imagePullSecrets: []

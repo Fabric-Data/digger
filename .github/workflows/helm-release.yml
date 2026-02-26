@@ -5,8 +5,8 @@ on:
     branches:
       - develop
     paths:
-      - 'helm-charts/**'
-  workflow_dispatch:  # Allow manual triggering
+      - "helm-charts/**"
+  workflow_dispatch: # Allow manual triggering
 
 permissions:
   contents: read
@@ -24,7 +24,9 @@ jobs:
           - taco-statesman
           - taco-token-service
           - taco-drift
-          - taco-ui 
+          - taco-ui
+          - taco-sidecar
+          - opentaco-platform-reference
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,7 +43,7 @@ jobs:
           cd helm-charts/${{ matrix.chart }}
           helm package .
           helm push ${{ matrix.chart }}-*.tgz oci://ghcr.io/diggerhq/helm-charts
-  
+
   # Then release umbrella chart after dependencies are available
   release-umbrella:
     needs: release-charts

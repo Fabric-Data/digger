@@ -1,0 +1,20 @@
+{{- if .Values.minio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+  labels:
+    {{- include "opentaco-platform-reference.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.minio.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: api
+      port: {{ .Values.minio.service.apiPort }}
+      targetPort: api
+    - name: console
+      port: {{ .Values.minio.service.consolePort }}
+      targetPort: console
+{{- end }}

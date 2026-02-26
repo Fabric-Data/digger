@@ -9,16 +9,8 @@ Your release is named {{ .Release.Name }}.
 DEPLOYMENT STATUS:
 ==================
 
-{{- if .Values.postgresql.enabled }}
-✓ PostgreSQL Database: Enabled (in-cluster)
-  Connection: {{ .Release.Name }}-postgresql:5432
-{{- else if .Values.cloudSql.enabled }}
-✓ Cloud SQL: Enabled
-  Instance: {{ .Values.cloudSql.instanceConnectionName }}
-{{- else }}
-⚠ No database configured!
-  Please enable postgresql or cloudSql in values.yaml
-{{- end }}
+✓ Database configuration is per service
+  Use each child chart's postgres/cloudSql settings (in-cluster or external).
 
 {{- if index .Values "taco-orchestrator" "enabled" }}
 ✓ Taco Orchestrator: Enabled
@@ -68,11 +60,9 @@ NEXT STEPS:
      --set taco-ui.ui.ingress.hosts[0].host=app.yourdomain.com
 
 4. Create required secrets if not exists:
-{{- if not .Values.postgresql.enabled }}
    kubectl create secret generic digger-db-secret --from-literal=password=YOUR_PASSWORD
    kubectl create secret generic taco-db-secret --from-literal=password=YOUR_PASSWORD
    kubectl create secret generic drift-db-secret --from-literal=password=YOUR_PASSWORD
-{{- end }}
    kubectl create secret generic workos-secrets \
      --from-literal=api-key=YOUR_API_KEY \
      --from-literal=cookie-password=YOUR_COOKIE_PASSWORD
@@ -82,4 +72,3 @@ For more information, see:
   repo: https://github.com/diggerhq/digger
 
 Happy Infrastructure-as-Coding! 🚀
-
