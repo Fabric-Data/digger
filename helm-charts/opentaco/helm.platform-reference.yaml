@@ -26,9 +26,12 @@ taco-orchestrator:
 
 taco-statesman:
   taco:
+    # Public URL used in Terraform Cloud snippets and signed URLs.
+    # Replace with your externally reachable host.
     image:
       repository: digger/taco-statesman
     publicBaseUrl: https://your-domain.com
+    # OPENTACO_SECRET_KEY is required in statesman-secrets for signed URL flows.
     storage:
       type: s3
       s3:
@@ -74,6 +77,12 @@ taco-drift:
   drift:
     image:
       repository: digger/drift
+    # Drift needs hostnames in drift-secrets:
+    # - DIGGER_APP_URL=https://your-domain.com
+    # - DIGGER_HOSTNAME=http://opentaco-taco-drift:3004
+    # - DIGGER_DRIFT_REPORTER_HOSTNAME=https://your-domain.com
+    cronjobs:
+      enabled: true
 
 taco-ui:
   ui:

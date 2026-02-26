@@ -53,7 +53,9 @@ taco-statesman:
   enabled: true
   taco:
     replicaCount: 2
+    publicBaseUrl: "https://app.your-domain.com" # CHANGE THIS
     allowXForwardedFor: true
+    secretKey: "CHANGE_THIS_TO_RANDOM_SIGNING_SECRET" # REQUIRED
     storage:
       type: "s3"
       s3:
@@ -112,6 +114,11 @@ taco-drift:
   enabled: true
   drift:
     replicaCount: 2
+    secret:
+      useExistingSecret: true
+      existingSecretName: "drift-secrets" # CHANGE THIS
+    cronjobs:
+      enabled: true
     resources:
       requests:
         memory: 512Mi
