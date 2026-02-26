@@ -34,7 +34,7 @@ dependencies:
   # Taco Sidecar - sandbox sidecar service
   - name: taco-sidecar
     version: "0.1.3-public"
-    repository: "file://../taco-sidecar"
+    repository: "oci://ghcr.io/diggerhq/helm-charts"
     condition: taco-sidecar.enabled
     tags:
       - backend
