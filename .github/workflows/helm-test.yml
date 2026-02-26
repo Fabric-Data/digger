@@ -33,6 +33,12 @@ jobs:
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git --verify=false
 
+      - name: Build chart dependencies (if any)
+        run: |
+          if grep -q "^dependencies:" helm-charts/${{ matrix.chart }}/Chart.yaml; then
+            helm dependency build helm-charts/${{ matrix.chart }}
+          fi
+
       - name: Lint chart
         run: |
           helm lint helm-charts/${{ matrix.chart }}
