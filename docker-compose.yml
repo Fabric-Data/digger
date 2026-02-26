@@ -78,7 +78,8 @@ services:
       # - GITHUB_APP_CLIENT_SECRET=
       # - GITHUB_APP_PRIVATE_KEY_BASE64=
       # - GITHUB_WEBHOOK_SECRET=
-      - HOSTNAME=public-url-including-scheme-CHANGE_ME
+      - PUBLIC_BASE_URL=public-url-including-scheme-CHANGE_ME
+      - INTERNAL_BASE_URL=http://orchestrator:3000
       - HTTP_BASIC_AUTH=true
       - HTTP_BASIC_AUTH_PASSWORD=basic-auth-password-CHANGE_ME
       - HTTP_BASIC_AUTH_USERNAME=admin
@@ -212,7 +213,8 @@ services:
       # - GITHUB_APP_CLIENT_SECRET=
       # - GITHUB_APP_PRIVATE_KEY_BASE64=
       # - GITHUB_WEBHOOK_SECRET=
-      - HOSTNAME=https://hyperphysical-alyse-metagnathous.ngrok-free.dev
+      - PUBLIC_BASE_URL=public-url-including-scheme-CHANGE_ME
+      - INTERNAL_BASE_URL=http://drift:3000
       - HTTP_BASIC_AUTH=true
       - HTTP_BASIC_AUTH_PASSWORD=github-setup-basic-auth-password-CHANGE_ME
       - HTTP_BASIC_AUTH_USERNAME=admin
