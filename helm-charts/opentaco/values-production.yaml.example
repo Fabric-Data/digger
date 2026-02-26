@@ -53,6 +53,7 @@ taco-statesman:
   enabled: true
   taco:
     replicaCount: 2
+    allowXForwardedFor: true
     storage:
       type: "s3"
       s3:

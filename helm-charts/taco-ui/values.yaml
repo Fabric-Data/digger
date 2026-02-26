@@ -33,6 +33,10 @@ ui:
   # Environment configuration
   # Creates environment variables for the UI service
   env:
+    # Public URL for UI links and hostname-derived instructions
+    # Creates: PUBLIC_URL
+    publicUrl: ""  # PUBLIC_URL (e.g., https://your-domain.com)
+
     # Allowed hosts (comma-separated)
     # Creates: ALLOWED_HOSTS
     allowedHosts: ""  # ALLOWED_HOSTS

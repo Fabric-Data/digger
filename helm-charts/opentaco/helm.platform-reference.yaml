@@ -28,6 +28,7 @@ taco-statesman:
   taco:
     image:
       repository: digger/taco-statesman
+    publicBaseUrl: https://your-domain.com
     storage:
       type: s3
       s3:
@@ -38,6 +39,7 @@ taco-statesman:
         secretAccessKey: change-me-minio-password
         awsRegion: us-east-1
     queryBackend: postgres
+    allowXForwardedFor: true
     postgres:
       host: postgresql-shared-rw.opentaco.svc.cluster.local
       port: "5432"

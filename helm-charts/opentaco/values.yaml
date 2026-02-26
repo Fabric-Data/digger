@@ -232,6 +232,7 @@ taco-ui:
     
     # Environment configuration (cross-service URLs)
     env:
+      publicUrl: "https://app.opentaco.example.com"
       # Allowed hosts (customize for your domain)
       allowedHosts: ""
       
