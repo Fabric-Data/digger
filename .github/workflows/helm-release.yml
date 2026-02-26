@@ -5,8 +5,8 @@ on:
     branches:
       - develop
       - sp/fix-helm-release
-    paths:
-      - "helm-charts/**"
+    # paths:
+    #   - "helm-charts/**"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
