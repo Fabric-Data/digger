@@ -148,7 +148,7 @@ taco-token-service:
   
   tokenService:
     image:
-      repository: ghcr.io/diggerhq/digger/taco-token-service
+      repository: taco-token-service
       tag: "v0.1.0"
       pullPolicy: "IfNotPresent"
     
@@ -318,4 +318,3 @@ networkPolicies:
 # Service Monitor for Prometheus (optional)
 serviceMonitor:
   enabled: false
-

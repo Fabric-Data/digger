@@ -19,6 +19,7 @@ jobs:
           - taco-token-service
           - taco-drift
           - taco-ui
+          - taco-sidecar
           - opentaco-platform-reference
           - opentaco
     steps:

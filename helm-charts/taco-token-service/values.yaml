@@ -3,7 +3,7 @@
 tokenService:
   # Image configuration
   image:
-    repository: ghcr.io/diggerhq/digger/taco-token-service
+    repository: taco-token-service
     tag: "v0.1.0"
     pullPolicy: "IfNotPresent"
 
@@ -62,3 +62,6 @@ tokenService:
     storageClass: ""
     accessMode: ReadWriteOnce
 
+# Global configuration (optional)
+global:
+  imagePullSecrets: []
