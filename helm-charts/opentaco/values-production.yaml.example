@@ -78,17 +78,19 @@ taco-token-service:
   enabled: true
   tokenService:
     replicaCount: 2
+    secret:
+      useExistingSecret: true
+      existingSecretName: "token-service-secrets" # CHANGE THIS
     database:
       backend: postgres
       postgres:
         host: "127.0.0.1"
         port: 5432
-        user: "postgres"
-        dbname: "taco"
+        user: "token_svc"
+        dbname: "token_service"
         sslmode: "disable"
         secretName: "token-service-secrets" # CHANGE THIS
-    persistence:
-      enabled: false
+        secretKey: "OPENTACO_TOKEN_POSTGRES_PASSWORD"
     cloudSql:
       enabled: true
       instanceConnectionName: "YOUR-PROJECT-ID:YOUR-REGION:YOUR-INSTANCE"

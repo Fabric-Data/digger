@@ -56,8 +56,6 @@ Create the name of the service account to use
 {{- define "taco-orchestrator.serviceAccountName" -}}
 {{- if .Values.digger.serviceAccount.name }}
 {{- .Values.digger.serviceAccount.name }}
-{{- else if and .Values.digger.cloudSql .Values.digger.cloudSql.serviceAccount }}
-{{- .Values.digger.cloudSql.serviceAccount }}
 {{- else }}
 {{- include "taco-orchestrator.fullname" . }}
 {{- end }}

@@ -17,50 +17,44 @@ tokenService:
 
   # Database configuration
   database:
-    # Backend type: "sqlite", "postgres", "mysql", "mssql"
-    backend: "sqlite"
-    
-    # SQLite configuration (default)
-    sqlite:
-      path: "/app/data/tokens.db"
-    
+    # Backend type: "postgres"
+    backend: "postgres"
+
     # PostgreSQL configuration
     postgres:
       host: ""
       port: 5432
-      user: "postgres"
+      user: "token_svc"
       password: ""
-      dbname: "taco"
+      dbname: "token_service"
       sslmode: "disable"
       # Use Kubernetes secrets for credentials
-      secretName: ""
-    
-    # MySQL configuration
-    mysql:
-      host: ""
-      port: 3306
-      user: "root"
-      password: ""
-      dbname: "taco"
-      # Use Kubernetes secrets for credentials
-      secretName: ""
-    
-    # MSSQL configuration
-    mssql:
-      host: ""
-      port: 1433
-      user: ""
-      password: ""
-      dbname: "taco"
-      # Use Kubernetes secrets for credentials
-      secretName: ""
+      secretName: "token-service-secrets"
+      secretKey: "OPENTACO_TOKEN_POSTGRES_PASSWORD"
 
-  # Persistence for SQLite
-  persistence:
+  # Secret configuration
+  secret:
+    useExistingSecret: true
+    existingSecretName: "token-service-secrets"
+
+  # Cloud SQL Proxy configuration (for GCP Cloud SQL)
+  cloudSql:
     enabled: true
-    size: 1Gi
-    storageClass: ""
-    accessMode: ReadWriteOnce
+    instanceConnectionName: "YOUR-PROJECT-ID:YOUR-REGION:YOUR-INSTANCE"
+    credentialsSecret: "cloudsql-credentials"
+    serviceAccount: "cloudsql-sa"
+
+  # Resource limits and requests
+  resources: {}
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
 
 # Global configuration (optional)
 global:

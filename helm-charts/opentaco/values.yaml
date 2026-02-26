@@ -131,44 +131,27 @@ taco-token-service:
       pullPolicy: "IfNotPresent"
     
     replicaCount: 1
+
+    # Secret management
+    secret:
+      useExistingSecret: true
+      existingSecretName: "token-service-secrets"
     
     # Database configuration - Using Cloud SQL (same as other services)
     database:
       backend: postgres  # Use postgres with Cloud SQL
-      
-      # SQLite (default - good for development)
-      sqlite:
-        path: "/app/data/tokens.db"
-      
+
       # PostgreSQL (recommended for production)
       postgres:
         host: "127.0.0.1"  # Cloud SQL proxy provides local access
         port: 5432
-        user: "postgres"  # Match your Cloud SQL user
-        dbname: "taco"  # Match your Cloud SQL database
+        user: "token_svc"  # Match your Cloud SQL user
+        dbname: "token_service"  # Match your Cloud SQL database
         sslmode: "disable"  # Proxy handles SSL
-        secretName: "postgres-credentials"  # Must contain 'password' key
+        secretName: "token-service-secrets"
+        secretKey: "OPENTACO_TOKEN_POSTGRES_PASSWORD"
       
-      # MySQL
-      mysql:
-        host: ""
-        port: 3306
-        user: "root"
-        dbname: "opentaco"
-        secretName: ""
-      
-      # MSSQL
-      mssql:
-        host: ""
-        port: 1433
-        user: ""
-        dbname: "opentaco"
-        secretName: ""
-    
-    # Persistence (disabled - using Cloud SQL)
-    persistence:
-      enabled: false  # Not needed with Cloud SQL
-    
+  
     # Cloud SQL configuration (enabled - same as statesman)
     cloudSql:
       enabled: true  # Enable Cloud SQL proxy
@@ -257,6 +240,7 @@ taco-ui:
         orchestratorUrl: "http://taco-orchestrator:3000"
         driftReportingUrl: "http://taco-drift:3004"
         statesmanUrl: "http://taco-statesman:8080"
+        tokensServiceUrl: "http://taco-token-service:8081"
     
     ingress:
       enabled: false

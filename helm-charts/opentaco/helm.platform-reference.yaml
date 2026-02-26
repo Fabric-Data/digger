@@ -53,6 +53,8 @@ taco-token-service:
   tokenService:
     image:
       repository: digger/taco-token-service
+    secret:
+      useExistingSecret: false
     database:
       backend: postgres
       postgres:
@@ -62,8 +64,7 @@ taco-token-service:
         dbname: token
         sslmode: disable
         secretName: postgresql-token-app
-    persistence:
-      enabled: false
+        secretKey: password
     cloudSql:
       enabled: false
 
