@@ -41,6 +41,9 @@ jobs:
       - name: Package and push ${{ matrix.chart }}
         run: |
           cd helm-charts/${{ matrix.chart }}
+          if grep -q "^dependencies:" Chart.yaml; then
+            helm dependency build
+          fi
           helm package .
           helm push ${{ matrix.chart }}-*.tgz oci://ghcr.io/diggerhq/helm-charts
 
