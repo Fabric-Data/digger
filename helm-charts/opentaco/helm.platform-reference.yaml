@@ -1,13 +1,16 @@
+# This values file is intended to be used together with the
+# `opentaco-platform-reference` chart. It contains overrides aligned with
+# the platform reference CloudNativePG and MinIO resources.
+
 global:
   imageRegistry: ghcr.io/diggerhq
-
-cloudSql:
-  enabled: false
 
 taco-orchestrator:
   digger:
     image:
       repository: digger_backend
+    cloudSql:
+      enabled: false
     config:
       loadProjectsOnPush: true
       backgroundJobsClientType: local-exec
