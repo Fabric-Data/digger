@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - develop
-      - sp/fix-helm-release
-    # paths:
-    #   - "helm-charts/**"
+    paths:
+      - "helm-charts/**"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
@@ -20,14 +19,14 @@ jobs:
     strategy:
       matrix:
         chart:
-          # - digger-backend
-          # - taco-orchestrator
-          # - taco-statesman
-          # - taco-token-service
+          - digger-backend
+          - taco-orchestrator
+          - taco-statesman
+          - taco-token-service
           - taco-drift
-          # - taco-ui
+          - taco-ui
           - taco-sidecar
-          # - opentaco-platform-reference
+          - opentaco-platform-reference
     steps:
       - name: Checkout
         uses: actions/checkout@v4
