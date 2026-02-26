@@ -1,15 +1,38 @@
-apiVersion: v1
-kind: Pod
-metadata:
-  name: "{{ include "taco-statesman.fullname" . }}-test-connection"
-  labels:
-    {{- include "taco-statesman.labels" . | nindent 4 }}
-  annotations:
-    "helm.sh/hook": test
-spec:
-  restartPolicy: Never
-  containers:
-    - name: wget
-      image: busybox
-      command: ['wget']
-      args: ['--spider', '--quiet', 'http://{{ include "taco-statesman.fullname" . }}:{{ .Values.taco.service.port }}/healthz']
+suite: test deployment
+templates:
+  - deployment.yaml
+tests:
+  - it: should create a deployment
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-taco-statesman
+      - equal:
+          path: spec.replicas
+          value: 1
+
+  - it: should set correct container image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/diggerhq/digger/taco-statesman:latest
+
+  - it: should use existing secret when configured
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: statesman-secrets
+
+  - it: should set Cloud SQL service account when enabled
+    set:
+      taco.cloudSql.enabled: true
+      taco.cloudSql.serviceAccount: cloudsql-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: cloudsql-sa
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: cloud-sql-proxy
