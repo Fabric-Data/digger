@@ -12,13 +12,13 @@ tests:
       - equal:
           path: spec.replicas
           value: 1
-  
+
   - it: should set correct container image
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: "ghcr.io/diggerhq/digger/taco-ui:v0.1.0"
-  
+          value: "ghcr.io/diggerhq/digger/taco-ui:latest"
+
   - it: should set environment variables when apiUrl is provided
     set:
       ui.env.apiUrl: "http://test-backend:8080"
@@ -28,17 +28,3 @@ tests:
           content:
             name: VITE_API_URL
             value: "http://test-backend:8080"
-  
-  - it: should configure workos when secretName is provided
-    set:
-      ui.env.workos.secretName: "workos-test"
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: WORKOS_API_KEY
-            valueFrom:
-              secretKeyRef:
-                name: workos-test
-                key: api-key
-

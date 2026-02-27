@@ -1,0 +1,20 @@
+sidecar:
+  image:
+    tag: "v0.1.0.0"  # Auto-updated by CI
+
+  replicaCount: 2
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  # Production secrets - use external secret manager
+  secret:
+    useExistingSecret: true
+    existingSecretName: "taco-sidecar-secrets"
+    e2bApiKey: "${E2B_API_KEY}"
+    e2bBareBonesTemplateId: "${E2B_BAREBONES_TEMPLATE_ID}"

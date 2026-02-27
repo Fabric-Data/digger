@@ -1,0 +1,100 @@
+# This values file is intended to be used together with the
+# `opentaco-platform-reference` chart. It contains overrides aligned with
+# the platform reference CloudNativePG and MinIO resources.
+
+global:
+  imageRegistry: ghcr.io/diggerhq
+
+taco-orchestrator:
+  digger:
+    image:
+      repository: digger_backend
+    cloudSql:
+      enabled: false
+    config:
+      loadProjectsOnPush: true
+      backgroundJobsClientType: local-exec
+      projectsRefreshBin: /app/projects_refesh_main
+    postgres:
+      host: postgresql-shared-rw.opentaco.svc.cluster.local
+      port: "5432"
+      user: orchestrator
+      database: orchestrator
+      sslmode: disable
+      existingSecretName: postgresql-orchestrator-app
+      existingSecretKey: password
+
+taco-statesman:
+  taco:
+    # Public URL used in Terraform Cloud snippets and signed URLs.
+    # Replace with your externally reachable host.
+    image:
+      repository: digger/taco-statesman
+    publicBaseUrl: https://your-domain.com
+    # OPENTACO_SECRET_KEY is required in statesman-secrets for signed URL flows.
+    storage:
+      type: s3
+      s3:
+        bucket: opentaco
+        region: us-east-1
+        endpoint: http://minio.opentaco.svc.cluster.local:9000
+        accessKeyId: minioadmin
+        secretAccessKey: change-me-minio-password
+        awsRegion: us-east-1
+    queryBackend: postgres
+    allowXForwardedFor: true
+    postgres:
+      host: postgresql-shared-rw.opentaco.svc.cluster.local
+      port: "5432"
+      user: statesman
+      database: statesman
+      sslmode: disable
+      existingSecretName: postgresql-statesman-app
+      existingSecretKey: password
+    cloudSql:
+      enabled: false
+
+taco-token-service:
+  tokenService:
+    image:
+      repository: digger/taco-token-service
+    secret:
+      useExistingSecret: false
+    database:
+      backend: postgres
+      postgres:
+        host: postgresql-shared-rw.opentaco.svc.cluster.local
+        port: 5432
+        user: token
+        dbname: token
+        sslmode: disable
+        secretName: postgresql-token-app
+        secretKey: password
+    cloudSql:
+      enabled: false
+
+taco-drift:
+  drift:
+    image:
+      repository: digger/drift
+    # Drift needs hostnames in drift-secrets:
+    # - DIGGER_APP_URL=https://your-domain.com
+    # - DIGGER_HOSTNAME=http://opentaco-taco-drift:3004
+    # - DIGGER_DRIFT_REPORTER_HOSTNAME=https://your-domain.com
+    cronjobs:
+      enabled: true
+
+taco-ui:
+  ui:
+    image:
+      repository: digger/taco-ui
+
+taco-sidecar:
+  enabled: true
+  sidecar:
+    secret:
+      useExistingSecret: false
+      # existingSecretName: opentaco-taco-sidecar-secrets
+      sandboxRunner: e2b
+      e2bApiKey: E2B_API_KEY_PLACEHOLDER
+      e2bBareBonesTemplateId: E2B_TEMPLATE_ID_PLACEHOLDER

@@ -927,7 +927,40 @@ func (d DiggerController) SetJobStatusForProject(c *gin.Context) {
 
 		// store digger job summary
 		if request.JobSummary != nil {
-			models.DB.UpdateDiggerJobSummary(job.DiggerJobID, request.JobSummary.ResourcesCreated, request.JobSummary.ResourcesUpdated, request.JobSummary.ResourcesDeleted)
+			job, err = models.DB.UpdateDiggerJobSummary(job.DiggerJobID, request.JobSummary.ResourcesCreated, request.JobSummary.ResourcesUpdated, request.JobSummary.ResourcesDeleted)
+			if err != nil {
+				slog.Warn("Could not update digger job summary for drift handling",
+					"jobId", jobId,
+					"error", err,
+				)
+			}
+
+			isDriftJob, err := IsDriftStatusJob(job)
+			if err != nil {
+				slog.Warn("Could not determine if job is a drift job",
+					"jobId", jobId,
+					"error", err,
+				)
+			} else if isDriftJob {
+				project, err := models.DB.GetProjectByName(orgId, job.Batch.RepoFullName, job.ProjectName)
+				if err != nil {
+					slog.Warn("Could not load project for drift state update",
+						"jobId", jobId,
+						"projectName", job.ProjectName,
+						"repoFullName", job.Batch.RepoFullName,
+						"error", err,
+					)
+				} else {
+					err = ProjectDriftStateMachineApply(*project, job.TerraformOutput, request.JobSummary.ResourcesCreated, request.JobSummary.ResourcesUpdated, request.JobSummary.ResourcesDeleted)
+					if err != nil {
+						slog.Warn("Could not update project drift state",
+							"jobId", jobId,
+							"projectName", job.ProjectName,
+							"error", err,
+						)
+					}
+				}
+			}
 		}
 
 		// Update PR comment with real-time status for succeeded job

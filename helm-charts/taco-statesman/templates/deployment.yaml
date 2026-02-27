@@ -91,10 +91,12 @@ spec:
               mountPath: /secrets/cloudsql
               readOnly: true
           {{- end }}
+      {{- if .Values.taco.cloudSql.credentialsSecret }}
       volumes:
         - name: cloudsql-credentials
           secret:
             secretName: {{ .Values.taco.cloudSql.credentialsSecret }}
+      {{- end }}
       {{- end }}
       {{- with .Values.taco.nodeSelector }}
       nodeSelector:

@@ -1,0 +1,97 @@
+# Demo/platform wrapper for OpenTaco.
+# Not intended as the primary long-term installation chart.
+
+traefik:
+  enabled: true
+  namespaceOverride: traefik
+  fullnameOverride: traefik
+  deployment:
+    replicas: 1
+  ingressClass:
+    enabled: true
+    isDefaultClass: false
+  service:
+    type: LoadBalancer
+
+cnpg:
+  enabled: true
+
+postgresql:
+  enabled: true
+  credentials:
+    create: true
+    orchestrator:
+      secretName: postgresql-orchestrator-app
+      username: orchestrator
+      password: orchestrator-dev-password
+      database: orchestrator
+    statesman:
+      secretName: postgresql-statesman-app
+      username: statesman
+      password: statesman-dev-password
+      database: statesman
+    token:
+      secretName: postgresql-token-app
+      username: token
+      password: token-dev-password
+      database: token
+  sharedCluster:
+    enabled: true
+    name: postgresql-shared
+    instances: 1
+    storage:
+      size: 5Gi
+
+minio:
+  enabled: true
+  fullnameOverride: minio
+
+  image:
+    repository: minio/minio
+    tag: RELEASE.2025-09-07T16-13-09Z-cpuv1
+    pullPolicy: IfNotPresent
+
+  mcImage:
+    repository: minio/mc
+    tag: RELEASE.2025-08-13T08-35-41Z-cpuv1
+    pullPolicy: IfNotPresent
+
+  auth:
+    rootUser: minioadmin
+    rootPassword: change-me-minio-password
+
+  service:
+    type: ClusterIP
+    apiPort: 9000
+    consolePort: 9001
+
+  ingress:
+    enabled: true
+    className: traefik
+    annotations: {}
+    api:
+      host: ""
+      path: /
+      pathType: Prefix
+    console:
+      enabled: true
+      host: ""
+      path: /
+      pathType: Prefix
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""
+
+  buckets:
+    - opentaco
+
+statesman:
+  objectStorageSecret:
+    create: true
+    name: statesman-object-storage
+    bucket: opentaco
+    region: us-east-1
+    prefix: ""
+    awsRegion: auto

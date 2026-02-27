@@ -1,0 +1,53 @@
+sidecar:
+  image:
+    repository: ghcr.io/diggerhq/sandbox-sidecar
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 9100
+    targetPort: 9100
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  env:
+    NODE_ENV: "production"
+    PORT: "9100"
+    SANDBOX_RUNNER: "e2b"
+    LOG_LEVEL: "info"
+
+  # Secret configuration
+  secret:
+    useExistingSecret: false
+    existingSecretName: ""
+    # Inline secret values (used when useExistingSecret=false)
+    sandboxRunner: "e2b"
+    e2bApiKey: ""
+    e2bBareBonesTemplateId: ""
+
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 9100
+    initialDelaySeconds: 10
+    periodSeconds: 30
+
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: 9100
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 
 	"github.com/diggerhq/digger/backend/models"
 	configuration "github.com/diggerhq/digger/libs/digger_config"
@@ -41,7 +40,7 @@ func ConvertJobsToDiggerJobs(jobType scheduler.DiggerCommand, jobReporterType st
 	}
 	organisationName := organisation.Name
 
-	backendHostName := os.Getenv("HOSTNAME")
+	backendHostName := GetPublicBaseURL()
 
 	slog.Debug("Processing jobs", "count", len(jobsMap))
 	marshalledJobsMap := map[string][]byte{}

@@ -1,0 +1,55 @@
+{{- if and .Values.minio.enabled .Values.minio.ingress.enabled .Values.minio.ingress.api.host }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "opentaco-platform-reference.minio.fullname" . }}-api
+  labels:
+    {{- include "opentaco-platform-reference.labels" . | nindent 4 }}
+  {{- with .Values.minio.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.minio.ingress.className }}
+  ingressClassName: {{ .Values.minio.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.minio.ingress.api.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.minio.ingress.api.path }}
+            pathType: {{ .Values.minio.ingress.api.pathType }}
+            backend:
+              service:
+                name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+                port:
+                  number: {{ .Values.minio.service.apiPort }}
+{{- if and .Values.minio.ingress.console.enabled .Values.minio.ingress.console.host }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "opentaco-platform-reference.minio.fullname" . }}-console
+  labels:
+    {{- include "opentaco-platform-reference.labels" . | nindent 4 }}
+  {{- with .Values.minio.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.minio.ingress.className }}
+  ingressClassName: {{ .Values.minio.ingress.className }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.minio.ingress.console.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.minio.ingress.console.path }}
+            pathType: {{ .Values.minio.ingress.console.pathType }}
+            backend:
+              service:
+                name: {{ include "opentaco-platform-reference.minio.fullname" . }}
+                port:
+                  number: {{ .Values.minio.service.consolePort }}
+{{- end }}
+{{- end }}

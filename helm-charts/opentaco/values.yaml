@@ -27,37 +27,15 @@ global:
 # Database Configuration
 # ============================================================================
 
-# Option 1: Use in-cluster PostgreSQL (bitnami chart)
-# Set postgresql.enabled=true for development/testing
-postgresql:
-  enabled: false  # Set to true to deploy PostgreSQL in cluster
-  auth:
-    username: opentaco
-    password: changeme  # CHANGE THIS or use existingSecret
-    database: opentaco
-    existingSecret: ""  # Reference existing secret for password
-  primary:
-    persistence:
-      enabled: true
-      size: 20Gi
-    resources:
-      requests:
-        memory: 256Mi
-        cpu: 250m
-      limits:
-        memory: 1Gi
-        cpu: 1000m
+# Option 1: Bring your own Postgres instance (in-cluster or external)
+# Configure each child chart's postgres settings/secret references accordingly.
+#
+# Option 2: Use Cloud SQL
+# Configure Cloud SQL under each child chart key:
+#   - taco-statesman.taco.cloudSql
+#   - taco-token-service.tokenService.cloudSql
+# and any other enabled service that supports Cloud SQL.
 
-# Option 2: Use Cloud SQL (recommended for production)
-# See helm-charts/scripts/setup-cloud-sql.sh to create Cloud SQL instance
-cloudSql:
-  enabled: true # Set to true to use Cloud SQL
-  # Connection details
-  instanceConnectionName: "YOUR-PROJECT-ID:YOUR-REGION:YOUR-INSTANCE"
-  # Database credentials (create secret first)
-  credentialsSecret: "cloudsql-credentials"
-  # Service account for Workload Identity
-  serviceAccount: "cloudsql-sa"
 
 # ============================================================================
 # Taco Orchestrator Configuration
@@ -76,6 +54,16 @@ taco-orchestrator:
     secret:
       useExistingSecret: true
       existingSecretName: "taco-orchestrator-secrets"
+
+    # URL configuration (used by orchestrator runtime)
+    # Prefer setting these in the referenced secret when useExistingSecret=true.
+    # These values are only used when the chart manages the secret.
+    # - PUBLIC_BASE_URL should be the public app URL (for example https://app.yourdomain.com)
+    # - INTERNAL_BASE_URL should be the in-cluster orchestrator URL
+    # See taco-orchestrator values for full details.
+    # publicBaseUrl: "https://app.opentaco.example.com"
+    # internalBaseUrl: "http://opentaco-taco-orchestrator:3000"
+    # hostname: ""  # Legacy fallback for older deployments
     
     # Resource limits (IMPORTANT: set for production)
     resources: {}
@@ -113,6 +101,12 @@ taco-statesman:
     secret:
       useExistingSecret: true
       existingSecretName: "statesman-secrets"
+
+    # Public URL and signed URL behavior
+    # Prefer setting these in the referenced secret when useExistingSecret=true.
+    # - publicBaseUrl -> OPENTACO_PUBLIC_BASE_URL
+    # - allowXForwardedFor -> OPENTACO_ALLOW_X_FORWARDED_FOR
+    # - secretKey -> OPENTACO_SECRET_KEY (required for signed upload/download URLs)
     
     # Storage configuration (critical: choose memory or s3)
     storage:
@@ -148,49 +142,32 @@ taco-token-service:
   
   tokenService:
     image:
-      repository: ghcr.io/diggerhq/digger/taco-token-service
+      repository: taco-token-service
       tag: "v0.1.0"
       pullPolicy: "IfNotPresent"
     
     replicaCount: 1
+
+    # Secret management
+    secret:
+      useExistingSecret: true
+      existingSecretName: "token-service-secrets"
     
     # Database configuration - Using Cloud SQL (same as other services)
     database:
       backend: postgres  # Use postgres with Cloud SQL
-      
-      # SQLite (default - good for development)
-      sqlite:
-        path: "/app/data/tokens.db"
-      
+
       # PostgreSQL (recommended for production)
       postgres:
         host: "127.0.0.1"  # Cloud SQL proxy provides local access
         port: 5432
-        user: "postgres"  # Match your Cloud SQL user
-        dbname: "taco"  # Match your Cloud SQL database
+        user: "token_svc"  # Match your Cloud SQL user
+        dbname: "token_service"  # Match your Cloud SQL database
         sslmode: "disable"  # Proxy handles SSL
-        secretName: "postgres-credentials"  # Must contain 'password' key
+        secretName: "token-service-secrets"
+        secretKey: "OPENTACO_TOKEN_POSTGRES_PASSWORD"
       
-      # MySQL
-      mysql:
-        host: ""
-        port: 3306
-        user: "root"
-        dbname: "opentaco"
-        secretName: ""
-      
-      # MSSQL
-      mssql:
-        host: ""
-        port: 1433
-        user: ""
-        dbname: "opentaco"
-        secretName: ""
-    
-    # Persistence (disabled - using Cloud SQL)
-    persistence:
-      enabled: false  # Not needed with Cloud SQL
-    
+  
     # Cloud SQL configuration (enabled - same as statesman)
     cloudSql:
       enabled: true  # Enable Cloud SQL proxy
@@ -231,6 +208,12 @@ taco-drift:
     secret:
       useExistingSecret: true
       existingSecretName: "drift-secrets"
+
+    # Drift hostname split (set in drift-secrets when useExistingSecret=true):
+    # - DIGGER_HOSTNAME should be the internal drift service URL
+    #   (for example http://opentaco-taco-drift:3004)
+    # - DIGGER_DRIFT_REPORTER_HOSTNAME should be the public base URL
+    #   (for example https://app.yourdomain.com)
     
     # Resource limits (IMPORTANT: set for production)
     resources: {}
@@ -247,6 +230,10 @@ taco-drift:
       className: "nginx"
       host: "drift.opentaco.example.com"
       path: /
+
+    # CronJobs for periodic drift processing
+    cronjobs:
+      enabled: false
     
     # For detailed configuration (GitHub App, database, webhook secrets, etc.),
     # see helm-charts/taco-drift/values.yaml or use existingSecret above
@@ -271,6 +258,7 @@ taco-ui:
     
     # Environment configuration (cross-service URLs)
     env:
+      publicUrl: "https://app.opentaco.example.com"
       # Allowed hosts (customize for your domain)
       allowedHosts: ""
       
@@ -279,6 +267,7 @@ taco-ui:
         orchestratorUrl: "http://taco-orchestrator:3000"
         driftReportingUrl: "http://taco-drift:3004"
         statesmanUrl: "http://taco-statesman:8080"
+        tokensServiceUrl: "http://taco-token-service:8081"
     
     ingress:
       enabled: false
@@ -318,4 +307,3 @@ networkPolicies:
 # Service Monitor for Prometheus (optional)
 serviceMonitor:
   enabled: false
-

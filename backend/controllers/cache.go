@@ -110,7 +110,10 @@ func (d DiggerController) UpdateRepoCache(c *gin.Context) {
 }
 
 func sendProcessCacheRequest(repoFullName string, branch string, installationId int64) error {
-	diggerHostname := os.Getenv("HOSTNAME")
+	diggerHostname := utils.GetInternalBaseURL()
+	if diggerHostname == "" {
+		return fmt.Errorf("INTERNAL_BASE_URL (or legacy HOSTNAME) is not set")
+	}
 	webhookSecret := os.Getenv("DIGGER_INTERNAL_SECRET")
 
 	installationLink, err := models.DB.GetGithubInstallationLinkForInstallationId(installationId)

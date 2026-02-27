@@ -49,3 +49,14 @@ Selector labels
 app.kubernetes.io/name: {{ include "taco-orchestrator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "taco-orchestrator.serviceAccountName" -}}
+{{- if .Values.digger.serviceAccount.name }}
+{{- .Values.digger.serviceAccount.name }}
+{{- else }}
+{{- include "taco-orchestrator.fullname" . }}
+{{- end }}
+{{- end }}

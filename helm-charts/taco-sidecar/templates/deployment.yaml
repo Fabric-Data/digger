@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "taco-sidecar.fullname" . }}
+  labels:
+    {{- include "taco-sidecar.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.sidecar.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "taco-sidecar.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "taco-sidecar.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: sidecar
+        image: "{{ .Values.sidecar.image.repository }}:{{ .Values.sidecar.image.tag }}"
+        imagePullPolicy: {{ .Values.sidecar.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.sidecar.service.targetPort }}
+          protocol: TCP
+        envFrom:
+        {{- if .Values.sidecar.secret.useExistingSecret }}
+        - secretRef:
+            name: {{ .Values.sidecar.secret.existingSecretName | default (printf "%s-secrets" (include "taco-sidecar.fullname" .)) }}
+        {{- else }}
+        - secretRef:
+            name: {{ include "taco-sidecar.fullname" . }}-secrets
+        {{- end }}
+        env:
+        - name: NODE_ENV
+          value: "{{ .Values.sidecar.env.NODE_ENV }}"
+        - name: PORT
+          value: "{{ .Values.sidecar.env.PORT }}"
+        - name: LOG_LEVEL
+          value: "{{ .Values.sidecar.env.LOG_LEVEL }}"
+        livenessProbe:
+          {{- toYaml .Values.sidecar.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.sidecar.readinessProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.sidecar.resources | nindent 10 }}
+      {{- with .Values.sidecar.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sidecar.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sidecar.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
