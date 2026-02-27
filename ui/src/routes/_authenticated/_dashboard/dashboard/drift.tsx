@@ -30,85 +30,85 @@ export const Route = createFileRoute(
 
 function RouteComponent() {
   const { settings, user, organisationId } = Route.useLoaderData()
-  const [settingsState, setSettingsState] = useState<OrgSettings>({
-    drift_webhook_url: settings.drift_webhook_url,
-    drift_enabled: settings.drift_enabled,
-    drift_cron_tab: settings.drift_cron_tab  // Default to daily at 9 AM
-  })
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const { toast } = useToast()
+    const [settingsState, setSettingsState] = useState<OrgSettings>({
+        drift_webhook_url: settings.drift_webhook_url,
+        drift_enabled: settings.drift_enabled,
+        drift_cron_tab: settings.drift_cron_tab  // Default to daily at 9 AM
+    })
+    const [saving, setSaving] = useState(false)
+    const [testing, setTesting] = useState(false)
+    const { toast } = useToast()
 
 
-  const handleSave = async () => {
-    try {
-      setSaving(true)
-      await updateOrgSettingsFn({ data: { settings: settingsState } })
-      toast({
-        title: "Success",
-        description: "Slack webhook settings saved successfully",
-        action: <ToastAction altText="OK">OK</ToastAction>,
-      })
-    } catch (error) {
-      console.error('Error saving Slack webhook settings:', error)
-      toast({
-        title: "Error",
-        description: "Failed to save Slack webhook settings",
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleTest = async () => {
-    if (!settingsState.drift_webhook_url) {
-      toast({
-        title: "Error",
-        description: "Please enter a webhook URL first",
-        variant: "destructive",
-      })
-      return
-    }
-
-    try {
-      setTesting(true)
-
-      await testSlackWebhookFn({ data: { notification_url: settingsState.drift_webhook_url } })
-      toast({
-        title: "Success",
-        description: "Test message sent successfully! Check your Slack channel.",
-        action: <ToastAction altText="OK">OK</ToastAction>,
-      })
-    } catch (error) {
-      console.error('Error testing Slack webhook:', error)
-      toast({
-        title: "Error",
-        description: "Failed to send test message. Please check your webhook URL.",
-        variant: "destructive",
-      })
-    } finally {
-      setTesting(false)
-    }
-  }
-
-  const isValidWebhookUrl = (url: string) => {
-    return url.startsWith('https://hooks.slack.com/services/')
-  }
-
-  const cronPresets = [
-    { label: "Hourly", value: "0 * * * *" },
-    { label: "Daily", value: "0 9 * * *" },
-    { label: "Every Sunday", value: "0 9 * * 0" },
-    { label: "Weekly", value: "0 9 * * 1" },
-    { label: "Monthly", value: "0 9 1 * *" }
-  ]
-
-  const isValidCrontab = (cron: string) => {
-    // Basic validation for crontab format (5 fields)
-    const fields = cron.trim().split(/\s+/)
-    return fields.length === 5
-  }
+    const handleSave = async () => {
+        try {
+          setSaving(true)
+          await updateOrgSettingsFn({data: {settings: settingsState}})
+          toast({
+            title: "Success",
+            description: "Slack webhook settings saved successfully",
+            action: <ToastAction altText="OK">OK</ToastAction>,
+          })
+        } catch (error) {
+          console.error('Error saving Slack webhook settings:', error)
+          toast({
+            title: "Error",
+            description: "Failed to save Slack webhook settings",
+            variant: "destructive",
+          })
+        } finally {
+          setSaving(false)
+        }
+      }
+    
+      const handleTest = async () => {
+        if (!settingsState.drift_webhook_url) {
+          toast({
+            title: "Error",
+            description: "Please enter a webhook URL first",
+            variant: "destructive",
+          })
+          return
+        }
+    
+        try {
+          setTesting(true)
+    
+          await testSlackWebhookFn({data: {notification_url: settingsState.drift_webhook_url}})
+          toast({
+            title: "Success",
+            description: "Test message sent successfully! Check your Slack channel.",
+            action: <ToastAction altText="OK">OK</ToastAction>,
+          })
+        } catch (error) {
+          console.error('Error testing Slack webhook:', error)
+          toast({
+            title: "Error",
+            description: "Failed to send test message. Please check your webhook URL.",
+            variant: "destructive",
+          })
+        } finally {
+          setTesting(false)
+        }
+      }
+    
+      const isValidWebhookUrl = (url: string) => {
+        return url.startsWith('https://hooks.slack.com/services/')
+      }
+    
+      const cronPresets = [
+        { label: "Hourly", value: "0 * * * *" },
+        { label: "Daily", value: "0 9 * * *" },
+        { label: "Every Sunday", value: "0 9 * * 0" },
+        { label: "Weekly", value: "0 9 * * 1" },
+        { label: "Monthly", value: "0 9 1 * *" }
+      ]
+    
+      const isValidCrontab = (cron: string) => {
+        // Basic validation for crontab format (5 fields)
+        const fields = cron.trim().split(/\s+/)
+        return fields.length === 5
+      }
 
   return (
     <div className="container mx-auto p-4">
@@ -146,7 +146,8 @@ function RouteComponent() {
               </div>
               <Switch
                 checked={settingsState.drift_enabled}
-                onCheckedChange={(checked) => { setSettingsState({ ...settingsState, drift_enabled: checked }) }
+                onCheckedChange={(checked) => 
+                  {setSettingsState({ ...settingsState, drift_enabled: checked })}
                 }
               />
             </div>
@@ -168,56 +169,57 @@ function RouteComponent() {
               disabled={!settingsState.drift_enabled}
               className={`space-y-6 ${!settingsState.drift_enabled ? 'opacity-60' : ''}`}
             >
-              <div className="space-y-3">
-                <Label htmlFor="webhook-url" className="text-base font-medium">
-                  Slack Webhook URL
-                </Label>
-                <div className="text-sm text-gray-600">
-                  Receive drift reports and alerts in your Slack workspace
-                </div>
-                <Input
-                  id="webhook-url"
-                  type="url"
-                  placeholder="https://hooks.slack.com/services/..."
-                  value={settingsState.drift_webhook_url}
-                  onChange={(e) =>
-                    setSettingsState({ ...settingsState, drift_webhook_url: e.target.value })
-                  }
-                  className="font-mono"
-                />
-                <div className="text-sm text-gray-600">
-                  You can find this URL in your Slack app settings under "Incoming Webhooks"
-                </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="webhook-url" className="text-base font-medium">
+                Slack Webhook URL
+              </Label>
+              <div className="text-sm text-gray-600">
+                Receive drift reports and alerts in your Slack workspace
               </div>
-
-              {settingsState.drift_enabled && settingsState.drift_webhook_url && !isValidWebhookUrl(settingsState.drift_webhook_url) && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Please enter a valid Slack webhook URL that starts with https://hooks.slack.com/services/
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {settingsState.drift_enabled && settingsState.drift_webhook_url && isValidWebhookUrl(settingsState.drift_webhook_url) && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Webhook URL looks good! You can test it to make sure it's working.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={handleTest}
-                  disabled={testing || !settingsState.drift_webhook_url || !isValidWebhookUrl(settingsState.drift_webhook_url)}
-                >
-                  <TestTube className="mr-2 h-4 w-4" />
-                  {testing ? "Testing..." : "Test Webhook"}
-                </Button>
+              <Input
+                id="webhook-url"
+                type="url"
+                placeholder="https://hooks.slack.com/services/..."
+                value={settingsState.drift_webhook_url}
+                onChange={(e) => 
+                  setSettingsState({ ...settingsState, drift_webhook_url: e.target.value })
+                }
+                className="font-mono"
+              />
+              <div className="text-sm text-gray-600">
+                You can find this URL in your Slack app settings under "Incoming Webhooks"
               </div>
+            </div>
+
+            {settingsState.drift_enabled && settingsState.drift_webhook_url && !isValidWebhookUrl(settingsState.drift_webhook_url) && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Please enter a valid Slack webhook URL that starts with https://hooks.slack.com/services/
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {settingsState.drift_enabled && settingsState.drift_webhook_url && isValidWebhookUrl(settingsState.drift_webhook_url) && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Webhook URL looks good! You can test it to make sure it's working.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={handleTest} 
+                disabled={testing || !settingsState.drift_webhook_url || !isValidWebhookUrl(settingsState.drift_webhook_url)}
+              >
+                <TestTube className="mr-2 h-4 w-4" />
+                {testing ? "Testing..." : "Test Webhook"}
+              </Button>
+            </div>
             </fieldset>
           </CardContent>
         </Card>
@@ -237,58 +239,58 @@ function RouteComponent() {
               disabled={!settingsState.drift_enabled}
               className={`space-y-6 ${!settingsState.drift_enabled ? 'opacity-60' : ''}`}
             >
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Quick Presets</Label>
-                <div className="flex flex-wrap gap-2">
-                  {cronPresets.map((preset) => (
-                    <Button
-                      key={preset.value}
-                      variant={settingsState.drift_cron_tab === preset.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSettingsState({ ...settingsState, drift_cron_tab: preset.value })}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
-                </div>
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Quick Presets</Label>
+              <div className="flex flex-wrap gap-2">
+                {cronPresets.map((preset) => (
+                  <Button
+                    key={preset.value}
+                    variant={settingsState.drift_cron_tab === preset.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSettingsState({ ...settingsState, drift_cron_tab: preset.value })}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
               </div>
+            </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="crontab" className="text-base font-medium">
-                  Custom Crontab Schedule
-                </Label>
-                <Input
-                  id="crontab"
-                  type="text"
-                  placeholder="0 9 * * *"
-                  value={settingsState.drift_cron_tab}
-                  onChange={(e) =>
-                    setSettingsState({ ...settingsState, drift_cron_tab: e.target.value })
-                  }
-                  className="font-mono"
-                />
-                <div className="text-sm text-gray-600">
-                  Format: minute hour day month day-of-week (e.g., "0 9 * * *" for daily at 9 AM)
-                </div>
+            <div className="space-y-3">
+              <Label htmlFor="crontab" className="text-base font-medium">
+                Custom Crontab Schedule
+              </Label>
+              <Input
+                id="crontab"
+                type="text"
+                placeholder="0 9 * * *"
+                value={settingsState.drift_cron_tab}
+                onChange={(e) => 
+                  setSettingsState({ ...settingsState, drift_cron_tab: e.target.value })
+                }
+                className="font-mono"
+              />
+              <div className="text-sm text-gray-600">
+                Format: minute hour day month day-of-week (e.g., "0 9 * * *" for daily at 9 AM)
               </div>
+            </div>
 
-              {settingsState.drift_enabled && settingsState.drift_cron_tab && !isValidCrontab(settingsState.drift_cron_tab) && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Please enter a valid crontab format with 5 fields (minute hour day month day-of-week)
-                  </AlertDescription>
-                </Alert>
-              )}
+            {settingsState.drift_enabled && settingsState.drift_cron_tab && !isValidCrontab(settingsState.drift_cron_tab) && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Please enter a valid crontab format with 5 fields (minute hour day month day-of-week)
+                </AlertDescription>
+              </Alert>
+            )}
 
-              {settingsState.drift_enabled && settingsState.drift_cron_tab && isValidCrontab(settingsState.drift_cron_tab) && (
-                <Alert>
-                  <CheckCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Schedule format is valid. Drift checks will run according to this schedule.
-                  </AlertDescription>
-                </Alert>
-              )}
+            {settingsState.drift_enabled && settingsState.drift_cron_tab && isValidCrontab(settingsState.drift_cron_tab) && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Schedule format is valid. Drift checks will run according to this schedule.
+                </AlertDescription>
+              </Alert>
+            )}
             </fieldset>
           </CardContent>
         </Card>
@@ -312,21 +314,21 @@ function RouteComponent() {
                   Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">https://api.slack.com/apps</a> and create a new app for your workspace.
                 </p>
               </div>
-
+              
               <div>
                 <h4 className="font-medium mb-2">Step 2: Enable Incoming Webhooks</h4>
                 <p className="text-gray-600">
                   In your app settings, go to "Incoming Webhooks" and turn on "Activate Incoming Webhooks".
                 </p>
               </div>
-
+              
               <div>
                 <h4 className="font-medium mb-2">Step 3: Create a Webhook</h4>
                 <p className="text-gray-600">
                   Click "Add New Webhook to Workspace" and select the channel where you want to receive notifications.
                 </p>
               </div>
-
+              
               <div>
                 <h4 className="font-medium mb-2">Step 4: Copy the Webhook URL</h4>
                 <p className="text-gray-600">
@@ -372,5 +374,5 @@ function RouteComponent() {
       </div>
     </div>
   )
-
+  
 }
