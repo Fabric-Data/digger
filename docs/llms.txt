@@ -5,7 +5,7 @@
 ## Documentation
 
 - [Introduction](https://docs.opentaco.dev/introduction/introduction): Overview of OpenTaco's core capabilities — state management, PR automation, remote runs, and drift detection.
-- [How It Works](https://docs.opentaco.dev/self-host-and-develop/howitworks): Architecture overview — five components: Statesman (state/remote runs), Drift, Token, Orchestrator (CI/PR automation), and UI (gateway proxy).
+- [System Architecture](https://docs.opentaco.dev/self-host-and-develop/system-architecture): Architecture overview of OpenTaco services, persistence components, and third-party dependencies.
 
 ## Getting Started
 

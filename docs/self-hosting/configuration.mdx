@@ -1,0 +1,104 @@
+---
+title: "Configuration"
+description: "Required credentials, API keys, and environment variables for self-hosting OpenTaco"
+---
+
+This page is a deployment-method-agnostic checklist for self-hosting OpenTaco.
+
+Use it for Docker Compose, Railway, Kubernetes, or other deployment targets.
+
+<Note>
+  Current third-party dependencies:
+
+  - WorkOS is required for authentication.
+  - E2B is required if you want to use Remote Runs.
+
+  Future work may enable self-hosting without these requirements.
+</Note>
+
+## Required external credentials
+
+These values come from external providers and cannot be invented locally.
+
+### Public URL and DNS
+
+Before configuring these variables, create a public endpoint for your deployment by setting a DNS record (for example, `opentaco.your-domain.com`) .resolving to wherever you are hosing your application. Alternatively, you can use something like [ngrok](https://ngrok.com/) if running locally.
+
+| Variable(s) | Used by | Source system | When required | Notes |
+| --- | --- | --- | --- | --- |
+| `PUBLIC_BASE_URL`, `PUBLIC_URL`, `OPENTACO_PUBLIC_BASE_URL` | `orchestrator`, `drift`, `ui`, `statesman` | Your public DNS/URL endpoint | Before first login | Point these to your app's valid public URL (DNS or ngrok) and keep them aligned unless you intentionally split domains. |
+
+### WorkOS
+
+For authentication-specific setup details, see [WorkOS Setup](/self-hosting/workos-setup).
+
+| Variable(s) | Used by | Source system | When required | Notes |
+| --- | --- | --- | --- | --- |
+| `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, `WORKOS_WEBHOOK_SECRET`, `WORKOS_REDIRECT_URI` | `ui` | WorkOS | Before first login | Required to authenticate into the app UI. `WORKOS_REDIRECT_URI` must match your public app URL callback route. See [WorkOS Setup](/self-hosting/workos-setup). |
+
+### GitHub
+
+| Variable(s) | Used by | Source system | When required | Notes |
+| --- | --- | --- | --- | --- |
+| `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY_BASE64`, `GITHUB_WEBHOOK_SECRET` | `orchestrator`, `drift` | GitHub App | During GitHub integration setup | Usually obtained from the in-app GitHub setup flow. Both services should use the same credentials and webhook secret. |
+| `GITHUB_ORG` | `orchestrator`, `drift` | GitHub org/user | During GitHub integration setup | Must match the org where the GitHub App is installed. |
+
+### E2B (sandboxes)
+
+| Variable(s) | Used by | Source system | When required | Notes |
+| --- | --- | --- | --- | --- |
+| `E2B_API_KEY`, `E2B_BAREBONES_TEMPLATE_ID` | `sidecar` | E2B | Optional (Remote Runs only) | Needed only if you enable Remote Runs with `SANDBOX_RUNNER=e2b`. |
+
+## Internal consistency variables
+
+These values are mostly internal wiring. They do not come from a third-party, but they must be consistent across services.
+
+<Note>
+  Platform templates may ship with different defaults for internal URLs and ports.
+
+  In most cases, the defaults should be correct for the selected platform, but you can validate and adjust them based on your deployment topology.
+</Note>
+
+| Variable(s) | Used by | Consistency requirement |
+| --- | --- | --- |
+| `ORCHESTRATOR_GITHUB_APP_URL` | `ui` | Should be `<internal-orchestrator-endpoint>/github/setup`. |
+| `ORCHESTRATOR_BACKEND_URL`, `STATESMAN_BACKEND_URL`, `TOKENS_SERVICE_BACKEND_URL` | `ui` | Must point to reachable internal service endpoints for your deployment. |
+| `DIGGER_INTERNAL_SECRET`, `ORCHESTRATOR_BACKEND_SECRET` | `orchestrator`, `drift`, `ui` | `ORCHESTRATOR_BACKEND_SECRET` must equal the `DIGGER_INTERNAL_SECRET` used by orchestrator/drift. |
+| `DIGGER_WEBHOOK_SECRET`, `DRIFT_REPORTING_BACKEND_WEBHOOK_SECRET` | `drift`, `ui` | These should match so UI can report drift status securely. |
+| `STATESMAN_BACKEND_WEBHOOK_SECRET`, `OPENTACO_ENABLE_INTERNAL_ENDPOINTS` | `ui`, `statesman` | Keep these aligned when using statesman internal endpoint authentication. |
+| `HTTP_BASIC_AUTH`, `HTTP_BASIC_AUTH_USERNAME`, `HTTP_BASIC_AUTH_PASSWORD` | `orchestrator` | Configure only for the orchestrator service if you are using HTTP basic auth. |
+| `DIGGER_PUBLIC_PATH_PREFIX` | `orchestrator` | Configure for orchestrator path routing when needed (for example, `/orchestrator`). |
+
+## Data stores and platform internals
+
+These are usually self-managed values in your deployment and vary by provider.
+
+- **Databases:** You need connection details for the backing databases (host, port, database name, user, password, SSL mode) used by orchestrator, statesman, and token services.
+- **Object storage:** You need S3-compatible object storage settings (endpoint/region, bucket, prefix, access key, secret key) for state storage.
+- **Service endpoints:** You need internal URLs so services can call each other.
+
+## Service-level runtime flags
+
+These are local service behavior toggles and paths.
+
+| Variable(s) | Used by | Purpose |
+| --- | --- | --- |
+| `BACKGROUND_JOBS_CLIENT_TYPE`, `DIGGER_ENABLE_API_ENDPOINTS`, `DIGGER_ENABLE_INTERNAL_ENDPOINTS`, `DIGGER_LOAD_PROJECTS_ON_PUSH`, `PROJECTS_REFRESH_BIN`, `INTERNAL_BASE_URL` | `orchestrator` | Orchestrator runtime behavior and internal routing. |
+| `DIGGER_DRIFT_REPORTER_HOSTNAME`, `DIGGER_HOSTNAME`, `DIGGER_ENABLE_API_ENDPOINTS`, `DIGGER_ENABLE_INTERNAL_ENDPOINTS`, `INTERNAL_BASE_URL` | `drift` | Drift runtime behavior and callback/internal routing. |
+| `ALLOWED_HOSTS` | `ui` | Host validation allowlist for UI ingress hostnames. |
+| `NODE_ENV`, `PORT`, `SANDBOX_RUNNER` | `sidecar` | Sidecar runtime mode and provider selection. |
+| `OPENTACO_ALLOW_X_FORWARDED_FOR`, `OPENTACO_PORT`, `OPENTACO_QUERY_BACKEND`, `OPENTACO_SANDBOX_PROVIDER`, `OPENTACO_E2B_SIDECAR_URL`, `OPENTACO_SECRET_KEY`, `OPENTACO_AUTHs_DISABLE` | `statesman` | Statesman runtime and auth behavior. |
+
+## By deployment target
+
+- **Docker Compose:** Set values in env files and/or compose `environment` blocks.
+- **Railway:** Set values as service environment variables in each Railway service.
+- **Kubernetes:** Store secrets in `Secret` resources and non-secret config in `ConfigMap` resources, then mount/inject into pods.
+- **Other platforms:** Apply the same variable groups, keeping cross-service URLs and shared secrets consistent.
+
+## Recommended handling
+
+- Keep external credentials in secret stores (not committed `.env` files).
+- Generate unique values for all `*-SECRET`, passwords, and cookie keys per environment.
+- Treat all cross-service shared secrets as a single rotation unit.
+- Validate the current variable names against runtime docs before production rollout.

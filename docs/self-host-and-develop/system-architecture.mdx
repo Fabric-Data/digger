@@ -1,0 +1,40 @@
+---
+title: "System Architecture"
+---
+
+OpenTaco is a multi-service platform. The UI is the public entrypoint, and backend services handle PR automation, drift detection, state management, token issuance, and remote-run orchestration.
+
+This page provides a high-level architecture view and a quick reference for first-party services, persistence components, and third-party dependencies.
+
+## Architecture diagram
+
+![OpenTaco self-hosted architecture diagram](/images/self-host/self-hosting--arch-light.png)
+
+## First-party services
+
+| Service | Responsibility |
+| --- | --- |
+| **UI** | Public entrypoint, serves the dashboard, and proxies backend APIs. |
+| **Orchestrator** (formerly Digger/backend) | Processes GitHub webhooks and creates Terraform/OpenTofu workflow runs. |
+| **Drift** | Initiates drift runs, processes results, and sends drift notifications. |
+| **Process-drift-trigger** | Schedules drift/notification processing (for example via pg_cron or k8s cronjob). |
+| **Statesman** | Manages Terraform backends and provides a drop-in Terraform Cloud/Enterprise-compatible backend. |
+| **Token-service** | Generates API tokens used for Statesman Terraform/OpenTofu authentication. |
+| **Sidecar** | Creates and manages remote run environments (sandbox VMs). |
+
+## Persistence
+
+| Component | Purpose |
+| --- | --- |
+| **orchestrator-db** | Stores orchestrator metadata and state for PR automation and related workflows. |
+| **token-db** | Stores token service data used for token issuance and validation flows. |
+| **statesman-db** | Stores Statesman metadata for state backend operations. |
+| **statesman-bucket** | Stores Terraform/OpenTofu state objects in S3-compatible object storage. |
+
+## Third-party services
+
+| Service | Purpose |
+| --- | --- |
+| **WorkOS** | Identity provider used for authentication and user/session management. |
+| **GitHub** | Source of webhook events and workflow execution target for PR automation and drift workflows. |
+| **E2B** | Provides ephemeral sandbox VMs for remote runs (used via Sidecar). |
