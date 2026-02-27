@@ -21,12 +21,12 @@
           {
             "group": "Introduction",
             "pages": [
-              "readme/introduction",
+              "introduction/introduction",
               {
                 "group": "Concepts",
                 "pages": [
-                  "ce/concepts/unit",
-                  "ce/concepts/role"
+                  "introduction/concepts/unit",
+                  "introduction/concepts/role"
                 ]
               }
             ]
@@ -34,19 +34,19 @@
           {
             "group": "Onboarding",
             "pages": [
-              "ce/getting-started/account-setup",
-              "ce/getting-started/state-management",
-              "ce/features/remote-jobs",
+              "onboarding/account-setup",
+              "onboarding/state-management",
+              "onboarding/remote-jobs",
               {
                 "group": "PR Automation",
                 "pages": [
-                  "ce/getting-started/github-app-setup",
-                  "ce/getting-started/configure-pr-automation-workflows",
-                  "ce/getting-started/configuring-digger-yml",
-                  "ce/getting-started/configuring-github-actions-workflow"
+                  "onboarding/github-app-setup",
+                  "onboarding/configure-pr-automation-workflows",
+                  "onboarding/configuring-digger-yml",
+                  "onboarding/configuring-github-actions-workflow"
                 ]
               },
-              "ce/drift/set-up-in-ui"
+              "onboarding/set-up-in-ui"
             ]
           },
           {
@@ -68,7 +68,7 @@
           {
             "group": "Architecture & Self-hosting",
             "pages": [
-              "readme/howitworks",
+               "self-host-and-develop/howitworks",
               "ce/self-host/auth-methods",
               "ce/self-host/deploy-docker",
               "ce/self-host/deploy-docker-compose",
@@ -99,7 +99,7 @@
           {
             "group": "Drift",
             "pages": [
-              "ce/drift/set-up-in-ui",
+              "onboarding/set-up-in-ui",
               "ce/drift/scoping-projects",
               "ce/drift/slack-notifications",
               "ce/drift/github-issues",

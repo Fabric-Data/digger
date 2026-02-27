@@ -1,0 +1,44 @@
+---
+title: "Set up GitHub App"
+description: "Install the OpenTaco GitHub App once before configuring Terraform, OpenTofu, or Terragrunt automation"
+---
+
+PR Automation connects OpenTaco to your GitHub pull request lifecycle. OpenTaco receives PR and comment events from GitHub and orchestrates plan/apply execution within GitHub Actions, and posts results back to the pull request.
+
+<Note>
+  Prerequisites:
+  - [Set up your OpenTaco account](/onboarding/account-setup)
+  - A GitHub account with permission to install GitHub Apps in your organization or repository
+</Note>
+
+<Steps>
+  <Step title="Install the OpenTaco GitHub App">
+    Install the [OpenTaco GitHub App](https://github.com/apps/opentaco-cloud/installations/select_target) and grant access to the repositories you want to automate.
+
+    ![](/images/onboarding/github-app-setup--install.png)
+  </Step>
+
+  <Step title="Choose repository access scope">
+    During installation, choose either all repositories or selected repositories.
+
+    For most teams, selected repositories is safer so you can roll out gradually.
+
+    ![](/images/onboarding/github-app-setup--repository-access.png)
+  </Step>
+
+  <Step title="Confirm installation in GitHub">
+    In GitHub, open your organization or user settings and confirm the OpenTaco app is installed and has access to the intended repositories.
+  </Step>
+</Steps>
+
+<Note>
+  The GitHub App does not need direct access to your cloud account. Cloud credentials stay in your CI configuration.
+</Note>
+
+## Next step
+
+Continue with the PR Automation onboarding flow:
+
+- [PR Automation Smoke Test](/onboarding/configure-pr-automation-workflows)
+- [Configuring digger.yml](/onboarding/configuring-digger-yml)
+- [Configuring the GitHub Actions workflow](/onboarding/configuring-github-actions-workflow)

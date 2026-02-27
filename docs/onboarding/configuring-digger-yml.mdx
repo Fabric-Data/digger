@@ -1,0 +1,115 @@
+---
+title: "Configuring digger.yml"
+description: "Set up digger.yml for OpenTofu, Terraform, or Terragrunt projects using explicit or generated project definitions"
+---
+
+Use this page to configure `digger.yml` after your smoke test passes.
+
+<Note>
+  Prerequisites:
+
+  - [Set up your OpenTaco account](/onboarding/account-setup)
+  - [Set up GitHub App](/onboarding/github-app-setup)
+  - [PR Automation Smoke Test](/onboarding/configure-pr-automation-workflows)
+</Note>
+
+## Choose your configuration model
+
+You can define projects explicitly, or generate projects automatically for larger monorepos.
+
+<Tabs>
+  <Tab title="OpenTofu">
+    **Explicit projects**
+
+    ```yaml
+    projects:
+    - name: core
+      dir: infra/core
+      opentofu: true
+    - name: app
+      dir: infra/app
+      opentofu: true
+    ```
+
+    **Generated projects**
+
+    ```yaml
+    generate_projects:
+      include: "infra/**"
+      terragrunt: false
+      opentofu: true
+    ```
+  </Tab>
+
+  <Tab title="Terraform">
+    **Explicit projects**
+
+    ```yaml
+    projects:
+    - name: core
+      dir: infra/core
+    - name: app
+      dir: infra/app
+    ```
+
+    **Generated projects**
+
+    ```yaml
+    generate_projects:
+      include: "infra/**"
+      terragrunt: false
+    ```
+  </Tab>
+
+  <Tab title="Terragrunt">
+    **Explicit projects (small repos)**
+
+    ```yaml
+    projects:
+    - name: dev
+      dir: dev
+      terragrunt: true
+    - name: prod
+      dir: prod
+      terragrunt: true
+    ```
+
+    **Generated projects with blocks (recommended for monorepos)**
+
+    ```yaml
+    generate_projects:
+      blocks:
+        - block_name: dev
+          terragrunt: true
+          root_dir: "dev/"
+          workflow: default
+        - block_name: prod
+          terragrunt: true
+          root_dir: "prod/"
+          workflow: default
+
+    workflows:
+      default:
+        plan:
+          steps:
+            - init
+            - plan
+        apply:
+          steps:
+            - init
+            - apply
+    ```
+  </Tab>
+</Tabs>
+
+## Validate digger.yml
+
+- Keep `dir` paths relative to repository root.
+- Use stable project names because project names appear in comments and logs.
+- Start with a small set of projects, then expand once plan/apply behavior is confirmed.
+
+For advanced project generation patterns, see [Generate Projects](/ce/howto/generate-projects).
+
+## Next step
+
+Continue with [Configuring the GitHub Actions workflow](/onboarding/configuring-github-actions-workflow).

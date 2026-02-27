@@ -1,0 +1,109 @@
+---
+title: "PR Automation Smoke Test"
+description: "Set up and verify PR automation with a minimal OpenTofu project before production workflow configuration"
+---
+
+<Note>
+  Prerequisites:
+
+  - [Set up your OpenTaco account](/onboarding/account-setup)
+  - [Set up GitHub App](/onboarding/github-app-setup)
+</Note>
+
+<Steps>
+  <Step title="Create a minimal OpenTofu smoke test">
+    <Info>
+      In future steps you will wire up your full infrastructure configuration. First, we suggest you create a minimal root module so you can verify your PR automation setup works end-to-end.
+    </Info>
+
+    Create a `/smoke-test/main.tf` file to validate your PR automation setup before wiring your full infrastructure repository.
+
+    ```hcl
+    resource "null_resource" "smoke_test" {}
+    ```
+
+    Run this flow with `tofu init` and `tofu plan`.
+
+    <Note>
+      This smoke test intentionally skips State Management so you can validate PR automation without handling additional state credentials first.
+    </Note>
+  </Step>
+
+  <Step title="Create digger.yml">
+    Add a `digger.yml` file at the root of your repository.
+
+    ```yaml
+    projects:
+      - name: production
+        dir: smoke-test
+        opentofu: true
+    ```
+
+    Update `dir` and project names to match your repository structure.
+  </Step>
+
+  <Step title="Add GitHub Actions workflow">
+    Create `.github/workflows/digger_workflow.yml`:
+
+    ```yaml
+    on:
+      workflow_dispatch:
+        inputs:
+          spec:
+            required: true
+          run_name:
+            required: false
+
+    run-name: "${{inputs.run_name}}"
+
+    jobs:
+      digger-job:
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write
+          actions: write
+          id-token: write
+          pull-requests: write
+          issues: read
+          statuses: write
+
+        steps:
+          - uses: actions/checkout@v4
+          - name: ${{ fromJSON(github.event.inputs.spec).job_id }}
+            run: echo "job id ${{ fromJSON(github.event.inputs.spec).job_id }}"
+          - uses: diggerhq/digger@vLatest
+            with:
+              digger-spec: ${{ inputs.spec }}
+              setup-opentofu: true
+            env:
+              GITHUB_CONTEXT: ${{ toJson(github) }}
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    ```
+  </Step>
+
+  <Step title="Verify the smoke test in a pull request">
+    Commit your `main.tf`, `digger.yml`, and `digger_workflow.yml`, push a branch, and open a pull request.
+
+    Confirm the Digger workflow runs in GitHub Actions and posts a plan comment on the pull request.
+
+    ![](/images/onboarding/configure-pr-automation-workflows--pr-comment.png)
+
+    Add a new PR comment:
+
+    ```text
+    digger apply
+    ```
+
+    Confirm the apply job runs and the apply result is posted back to the pull request.
+
+    ![](/images/onboarding/configure-pr-automation-workflows--apply-workflow-run.png)
+
+  </Step>
+
+  <Step title="Configure production settings next">
+    Continue with:
+
+    - [Configuring digger.yml](/onboarding/configuring-digger-yml)
+    - [Configuring the GitHub Actions workflow](/onboarding/configuring-github-actions-workflow)
+  </Step>
+</Steps>
