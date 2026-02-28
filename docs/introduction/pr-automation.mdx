@@ -1,0 +1,50 @@
+---
+title: "PR Automation"
+description: "Run plan and apply workflows in pull requests and CI"
+---
+
+PR Automation is OpenTaco's historical core: run `plan` and `apply` workflows in CI with review gates, comments, and team controls.
+
+It works across Terraform, OpenTofu, and Terragrunt workflows.
+
+## What you get
+
+- PR-based `plan`/`apply` workflows in CI
+- Comment-driven operations and approval controls
+- Reusable workflows across infrastructure repositories
+
+## Why run Infrastructure as Code within Continuous Integration
+
+- Standardized runtime behavior across teams, repos, and environments
+- No need for every contributor to install and maintain the full IaC toolchain for routine changes
+- GitOps visibility: plans, approvals, and applies are tied to pull requests and commits
+- Better change and approval auditability through your existing VCS history and CI logs
+- Fewer "works on my machine" issues due to centralized execution
+- Easier policy and control enforcement (checks, approvals, and workflow gates)
+- Reduced credential sprawl by keeping cloud and platform credentials off developer machines
+- Support for short-lived workflow authentication (for example, OIDC-based tokens) instead of long-lived static secrets
+
+## Typical workflow
+
+1. Install the OpenTaco GitHub App for your repos/org.
+2. Add `digger.yml` to define projects and workflows.
+3. Add the GitHub Actions workflow that runs OpenTaco automation.
+4. Open a PR and use `plan`/`apply` commands through comments.
+
+## Common controls teams add
+
+- Apply requirements (approval, mergeability, branch state)
+- PR-level locking and concurrency controls
+- Cost/security checks and custom command steps
+
+## When teams start with PR Automation
+
+- You want safer PR review for infrastructure changes without changing state backend immediately.
+- You want a standard CI automation layer across many repos.
+- You want a path to add drift detection and state management incrementally.
+
+## Start here
+
+- [Onboarding: GitHub App setup](/onboarding/github-app-setup)
+- [Onboarding: PR automation workflow](/onboarding/configure-pr-automation-workflows)
+- [PR Automation docs](/ce/features/overview)

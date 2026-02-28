@@ -67,3 +67,12 @@ cp self-hosting/docker-compose/ui.env.example self-hosting/docker-compose/ui.env
 ```
 
 Each service now reads its own env file directly from `self-hosting/docker-compose/`.
+
+## Drift scheduler
+
+The compose stack includes a `drift-scheduler` service that periodically calls the drift internal endpoints:
+
+- `/_internal/process_drift`
+- `/_internal/process_notifications`
+
+Keep `drift-scheduler` `DIGGER_WEBHOOK_SECRET` aligned with the `drift` service `DIGGER_WEBHOOK_SECRET` value.

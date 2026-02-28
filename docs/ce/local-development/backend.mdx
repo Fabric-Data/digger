@@ -1,18 +1,37 @@
 ---
-title: Backend (orchestrator) local setup
+title: Orchestrator (backend) local setup
+description: Run orchestrator on your host while other services continue in Docker Compose.
 ---
 
-The backend serves orchestration APIs, GitHub app endpoints, and internal APIs the UI relies on.
+The backend serves orchestration APIs, GitHub app endpoints, and internal APIs used by the UI.
+
+Use this page when you want to stop only `orchestrator` in Compose and run backend from source for faster changes.
+
+## Hybrid workflow (recommended)
+
+```bash
+make -C self-hosting/docker-compose all-up
+docker compose -f self-hosting/docker-compose/docker-compose.yml stop orchestrator
+```
+
+Run `make -C ...` from repo root, or run `make all-up` from `self-hosting/docker-compose`.
+
+If UI stays in Docker, point UI to host backend:
+
+- `ORCHESTRATOR_BACKEND_URL=http://host.docker.internal:3000`
+
+If UI runs on host, use `ORCHESTRATOR_BACKEND_URL=http://localhost:3000` in `ui/.env.local`.
 
 ## Quick start
 
 1. Create `backend/.env` with the essentials (adjust DB URL/ports):
    ```bash
-   DATABASE_URL=postgres://postgres:root@localhost:5432/postgres?sslmode=disable
+   DATABASE_URL=postgres://postgres:postgres-password-CHANGE_ME@localhost:5432/orchestrator?sslmode=disable
    DIGGER_INTERNAL_SECRET=orchestrator-secret          # must match UI ORCHESTRATOR_BACKEND_SECRET
    DIGGER_ENABLE_INTERNAL_ENDPOINTS=true               # enables /_internal/*
    DIGGER_ENABLE_API_ENDPOINTS=true                    # enables /api/*
-   HOSTNAME=http://localhost:3000                      # used for GitHub app callbacks
+   PUBLIC_BASE_URL=http://localhost:3000               # public URL used for GitHub app callbacks
+   INTERNAL_BASE_URL=http://localhost:3000             # internal backend URL
    ```
    Optional but useful:
    - `GITHUB_APP_ID`, `GITHUB_APP_PEM`, `GITHUB_APP_WEBHOOK_SECRET` if you already have an app.
@@ -24,7 +43,7 @@ The backend serves orchestration APIs, GitHub app endpoints, and internal APIs t
    ```
    Default port: `3000`.
 
-## Make the UI happy
+## Sync organization and user for UI flows
 
 - The UI calls `/api/*` and `/github/*` with `Authorization: Bearer $DIGGER_INTERNAL_SECRET` and `DIGGER_ORG_ID`/`DIGGER_USER_ID` headers.
 - You must upsert the WorkOS org + user the UI is authenticated as:
@@ -51,8 +70,9 @@ The backend serves orchestration APIs, GitHub app endpoints, and internal APIs t
 
 ## GitHub app integration
 
-- For a quick install link, set `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local` to your app’s install URL (`https://github.com/apps/<app>/installations/new`).
-- To create a new app via the backend, open `http://localhost:3000/github/setup` (requires `HOSTNAME` set to a reachable URL for callbacks).
+- For a quick install link, set `ORCHESTRATOR_GITHUB_APP_URL` in UI config to your app install URL (`https://github.com/apps/<app>/installations/new`).
+- To create a new app via the backend, open `http://localhost:3000/github/setup` (requires `PUBLIC_BASE_URL` and `INTERNAL_BASE_URL` configured).
+- When using ngrok, callbacks should target the UI tunnel domain, not direct backend localhost URLs.
 
 ## Troubleshooting
 

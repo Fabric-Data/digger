@@ -4,27 +4,50 @@ title: GitHub App settings for local dev
 
 Use these settings when connecting a GitHub App to your local stack (tunneled via the UI domain).
 
-## Required URLs
+You must create and install this GitHub App in both setups: when Orchestrator/Drift run in Docker and when they run directly on your host.
 
-- **Callback URL** (OAuth/web): `https://<your-public-ui-domain>/orchestrator/github/callback`
-- **Webhook URL**: `https://<your-public-ui-domain>/orchestrator/github/webhook`
-- **Setup URL (optional)**: `https://<your-public-ui-domain>/dashboard/onboarding?step=github`
+## Recommended: create the app with the backend wizard first
 
-> The UI forwards these to the backend. Ensure `ORCHESTRATOR_BACKEND_URL`/`SECRET` are set in UI and the backend is reachable from the UI host.
+Use the backend wizard as the primary path for local development.
 
-## Permissions & events (recommended)
+- Open `http://localhost:3000/github/setup` (or the backend public URL).
+- The wizard generates a GitHub App manifest JSON payload for you.
+- Continue the GitHub setup flow from that manifest, then copy the app install URL into `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local`.
 
-- Permissions: `contents:read`, `pull_requests:write`, `issues:write`, `statuses:write`, `checks:write`, `metadata:read`, `administration:read`, `workflows:write`, `repository_hooks:write`, `members:read`.
-- Events: `issue_comment`, `pull_request`, `pull_request_review`, `pull_request_review_comment`, `push`, `check_run`, `status`.
+![Backend GitHub app setup wizard for local development](/images/contributing/local-dev--gh-app-setup.png)
 
-## Install URL
+Needed backend env vars:
 
-After creating the app, use its install URL (e.g., `https://github.com/apps/<app-name>/installations/new`) as `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local`. This drives the "Connect with GitHub" button.
+- `PUBLIC_BASE_URL` set to a reachable public URL
+- `INTERNAL_BASE_URL` set to the backend internal service URL
+- Optional: `GITHUB_ORG` to scope setup to a specific org
 
-## Creating an app via the backend wizard
+<Note>
+For the end-to-end GitHub setup flow, see [Set up GitHub App](/onboarding/github-app-setup). In local dev, the key difference is that you start from the backend wizard manifest JSON instead of going directly to the hosted OpenTaco GitHub App install link.
+</Note>
 
-- Open `http://localhost:3000/github/setup` (or the backend's public URL) to generate a manifest and create the app in GitHub. Needed envs on backend: `HOSTNAME` set to a reachable URL, and optional `GITHUB_ORG` if you want to scope to an org.
-- Once created, copy the install URL into `ORCHESTRATOR_GITHUB_APP_URL` and restart the UI.
+## App credentials from GitHub
+
+After app creation, GitHub shows credentials (including app ID and client ID). Copy these into your backend/drift environment configuration (for example `self-hosting/docker-compose/orchestrator.env` and `self-hosting/docker-compose/drift.env`):
+
+- `GITHUB_APP_ID`
+- `GITHUB_APP_CLIENT_ID`
+- `GITHUB_APP_CLIENT_SECRET`
+- `GITHUB_APP_PRIVATE_KEY_BASE64`
+- `GITHUB_WEBHOOK_SECRET`
+
+![GitHub app credentials after local setup](/images/contributing/local-dev--gh-app-creds.png)
+
+## Install the app on repositories
+
+After creating the app, open its install link (for example `https://github.com/apps/<app-name>/installations/new`) and install it to your org or user account.
+
+During install, choose repository scope:
+
+- **All repositories** for broad testing
+- **Only select repositories** for safer local iteration
+
+Then set `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local` to the same install link so the UI "Connect with GitHub" action points to your app.
 
 ## Troubleshooting
 

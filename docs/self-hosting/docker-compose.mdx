@@ -61,3 +61,25 @@ make recreate
 # rebuild images and force recreate services
 make rebuild
 ```
+
+## Host port forwarding
+
+The Compose stack exposes these host ports for local access and hybrid development:
+
+<Note>
+Verify current values in `self-hosting/docker-compose/docker-compose.yml`, especially if you customize the stack.
+</Note>
+
+| Service | Host port | Container port |
+| --- | --- | --- |
+| `orchestrator` | `3000` | `3000` |
+| `drift` | `3001` | `3000` |
+| `statesman` | `8080` | `8080` |
+| `token-service` | `8081` | `8081` |
+| `ui` | `3030` | `3030` |
+| `sidecar` | `9100` | `9100` |
+| `postgres-orchestrator` | `5432` | `5432` |
+| `postgres-statesman` | `5433` | `5432` |
+| `postgres-token-service` | `5434` | `5432` |
+| `minio` | `9000` | `9000` |
+| `minio console` | `9001` | `9001` |

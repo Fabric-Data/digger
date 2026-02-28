@@ -23,7 +23,8 @@ docker pull registry.digger.dev/diggerhq/digger_backend:latest
 
 ```
 GITHUB_ORG=your_github_org
-HOSTNAME=your_public_digger_hostname
+PUBLIC_BASE_URL=https://your_public_digger_hostname
+INTERNAL_BASE_URL=http://localhost:3000
 BEARER_AUTH_TOKEN=$(openssl rand -base64 12)
 DATABASE_URL=postgres://postgres:PASSWORD@POSTGRESHOSTNAME:5432/postgres
 HTTP_BASIC_AUTH=1

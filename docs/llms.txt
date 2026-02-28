@@ -41,13 +41,9 @@
 - [PR-Level Locks](https://docs.opentaco.dev/ce/features/pr-level-locks): Prevent concurrent terraform operations on the same project.
 - [Plan Preview](https://docs.opentaco.dev/ce/features/plan-preview): Preview terraform plan output in PR comments.
 - [AI Summaries](https://docs.opentaco.dev/ce/features/ai-summaries): AI-generated summaries of terraform plan output.
-- [Concurrency](https://docs.opentaco.dev/ce/features/concurrency): Parallel execution of terraform operations.
 - [Layering](https://docs.opentaco.dev/ce/features/layering): Control execution order of dependent projects.
-- [OPA Policies](https://docs.opentaco.dev/ce/features/opa-policies): Policy-as-code with Open Policy Agent — plan policies (validate terraform plan output) and access policies (control who can run operations). Configure via management repo, orchestrator API, or inline Conftest.
-- [RBAC](https://docs.opentaco.dev/ce/features/rbac): Role-based access control at organisation, repository, and project levels. Integrates with OPA and CODEOWNERS.
 - [Remote Jobs](https://docs.opentaco.dev/onboarding/remote-jobs): Run terraform remotely via `dgctl exec` with streamed logs. Local directory is zipped and uploaded to CI. Respects OPA RBAC policies.
 - [Private Runners](https://docs.opentaco.dev/ce/features/private-runners): Use private GitHub Actions runners.
-- [Multi-GitHub](https://docs.opentaco.dev/ce/features/multi-github): Support for multiple GitHub organizations.
 - [FIPS 140](https://docs.opentaco.dev/ce/features/fips-140): FIPS 140 compliance support.
 
 ## Drift Detection
@@ -57,7 +53,6 @@
 - [GitHub Issues](https://docs.opentaco.dev/ce/drift/github-issues): Create GitHub issues for detected drift.
 - [Remediation](https://docs.opentaco.dev/ce/drift/remediation): Remediate detected drift.
 - [Scoping Projects](https://docs.opentaco.dev/ce/drift/scoping-projects): Scope drift detection to specific projects.
-- [Self-Host](https://docs.opentaco.dev/ce/drift/self-host): Self-host drift detection.
 - [Troubleshooting](https://docs.opentaco.dev/ce/drift/troubleshooting): Troubleshoot drift detection issues.
 
 ## How-To Guides
@@ -68,7 +63,6 @@
 - [Backendless Mode](https://docs.opentaco.dev/ce/howto/backendless-mode): Run without the orchestrator backend.
 - [Caching Strategies](https://docs.opentaco.dev/ce/howto/caching-strategies): Cache terraform providers and modules.
 - [CODEOWNERS](https://docs.opentaco.dev/ce/howto/codeowners): Use CODEOWNERS files for approval workflows.
-- [Commenting Strategies](https://docs.opentaco.dev/ce/howto/commenting-strategies): Configure how plan output is posted to PRs.
 - [Custom Commands](https://docs.opentaco.dev/ce/howto/custom-commands): Run custom shell commands in workflows.
 - [Destroy Manual](https://docs.opentaco.dev/ce/howto/destroy-manual): Manually destroy terraform resources.
 - [Disable Auto Checkout](https://docs.opentaco.dev/ce/howto/disable-auto-checkout): Disable automatic repository checkout.
@@ -81,11 +75,9 @@
 - [Multi-Account AWS](https://docs.opentaco.dev/ce/howto/multiacc-aws): Configure multiple AWS accounts.
 - [Noise Reduction](https://docs.opentaco.dev/ce/howto/noise-reduction): Reduce noise in PR comments.
 - [Plan Artefacts](https://docs.opentaco.dev/ce/howto/plan-artefacts): Store and retrieve plan artefacts.
-- [Policy Overrides](https://docs.opentaco.dev/ce/howto/policy-overrides): Override OPA policies.
 - [Project-Level Roles](https://docs.opentaco.dev/ce/howto/project-level-roles): Configure roles per project.
 - [Segregate Cloud Accounts](https://docs.opentaco.dev/ce/howto/segregate-cloud-accounts): Separate cloud account access.
 - [Specify Terraform Version](https://docs.opentaco.dev/ce/howto/specify-terraform-version): Pin terraform version.
-- [Trigger Directly](https://docs.opentaco.dev/ce/howto/trigger-directly): Trigger operations without PR events.
 - [Using Checkov](https://docs.opentaco.dev/ce/howto/using-checkov): Integrate Checkov static analysis.
 - [Using Infracost](https://docs.opentaco.dev/ce/howto/using-infracost): Integrate Infracost cost estimation.
 - [Using OPA/Conftest](https://docs.opentaco.dev/ce/howto/using-opa-conftest): Integrate OPA via Conftest CLI.
