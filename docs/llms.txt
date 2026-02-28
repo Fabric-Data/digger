@@ -21,7 +21,7 @@
 
 ## State Management
 
-- [Introduction](https://docs.opentaco.dev/ce/state-management/introduction): Self-hostable state management with built-in RBAC, validation, multi-account access, versioning, and rollback. Currently supports S3 backend.
+- [Overview](https://docs.opentaco.dev/ce/state-management/overview): Self-hostable state management with built-in RBAC, validation, multi-account access, versioning, and rollback. Currently supports S3 backend.
 - [Architecture](https://docs.opentaco.dev/ce/state-management/architecture): Statesman service provides REST API for state operations. TFE-compatible — supports `terraform login`. Stores state in S3-compatible storage with metadata in SQLite/PostgreSQL/MySQL/MSSQL.
 - [Quickstart](https://docs.opentaco.dev/ce/state-management/quickstart): Quick setup guide for state management.
 - [AWS Fargate Quickstart](https://docs.opentaco.dev/ce/state-management/aws-fargate-ad-quickstart): Deploy state management on AWS Fargate.
@@ -52,7 +52,7 @@
 
 ## Drift Detection
 
-- [Set Up in UI](https://docs.opentaco.dev/onboarding/set-up-in-ui): Configure drift detection schedules (hourly, daily, or custom crontab) via the UI.
+- [Drift Detection + Remediation](https://docs.opentaco.dev/onboarding/drift-detection-remediation): Configure drift detection schedules (hourly, daily, or custom crontab) via the UI.
 - [Slack Notifications](https://docs.opentaco.dev/ce/drift/slack-notifications): Send drift alerts to Slack via webhooks.
 - [GitHub Issues](https://docs.opentaco.dev/ce/drift/github-issues): Create GitHub issues for detected drift.
 - [Remediation](https://docs.opentaco.dev/ce/drift/remediation): Remediate detected drift.

@@ -72,7 +72,7 @@ The sidecar automatically selects the best execution environment:
 - Terraform: 1.0.11, 1.3.9, 1.5.7, 1.8.5
 - OpenTofu: 1.6.0, 1.10.0
 
-**Building templates**: Run `cd templates && npm run build` to build all templates defined in `manifest.ts`.
+**Building templates**: Run `npx tsx templates/build-all.ts` from `sandbox-sidecar/` to build and publish all templates defined in `templates/manifest.ts`.
 
 Users specify the version when creating a unit in the UI (defaults to 1.5.7).
 
@@ -123,4 +123,3 @@ failure, `error` contains the reason string. A `failed` response never includes
   (Redis, Postgres) before running multiple replicas.
 - E2B sandboxes are ephemeral and isolated - each run gets a fresh environment.
 - Pre-built templates provide instant startup; custom versions install at runtime (~1-2s).
-

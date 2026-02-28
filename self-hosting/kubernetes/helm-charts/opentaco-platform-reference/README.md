@@ -7,7 +7,7 @@ It is not intended as a production blueprint. Teams should use their own platfor
 It installs:
 - Traefik ingress controller
 - CloudNativePG operator
-- Shared CNPG cluster and application DB credentials
+- A single shared CNPG cluster with three databases and app credentials for orchestrator, statesman, and token-service
 - MinIO (StatefulSet) for statesman object storage
 - Bucket init job (creates `opentaco` bucket by default)
 - Statesman object storage secret (`statesman-object-storage` by default)

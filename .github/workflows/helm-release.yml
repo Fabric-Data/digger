@@ -5,7 +5,7 @@ on:
     branches:
       - develop
     paths:
-      - "helm-charts/**"
+      - "self-hosting/kubernetes/helm-charts/**"
   workflow_dispatch: # Allow manual triggering
 
 permissions:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Package and push ${{ matrix.chart }}
         run: |
-          cd helm-charts/${{ matrix.chart }}
+          cd self-hosting/kubernetes/helm-charts/${{ matrix.chart }}
           if grep -q "^dependencies:" Chart.yaml; then
             helm dependency build
           fi
@@ -64,11 +64,11 @@ jobs:
 
       - name: Build dependencies for opentaco
         run: |
-          cd helm-charts/opentaco
+          cd self-hosting/kubernetes/helm-charts/opentaco
           helm dependency build
 
       - name: Package and push opentaco
         run: |
-          cd helm-charts/opentaco
+          cd self-hosting/kubernetes/helm-charts/opentaco
           helm package .
           helm push opentaco-*.tgz oci://ghcr.io/diggerhq/helm-charts

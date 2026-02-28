@@ -46,7 +46,7 @@
                   "onboarding/configuring-github-actions-workflow"
                 ]
               },
-              "onboarding/set-up-in-ui"
+              "onboarding/drift-detection-remediation"
             ]
           },
           {
@@ -65,7 +65,7 @@
               "self-hosting/railway",
               "self-hosting/kubernetes",
               {
-                "group": "Deprecated Individual Component Installs",
+                "group": "Individual Component Installs",
                 "pages": [
                   "self-hosting/deprecated-individual-component-installs/orchestrator-backend",
                   "self-hosting/deprecated-individual-component-installs/statesman"
@@ -74,8 +74,21 @@
             ]
           },
           {
-            "group": "Features",
+            "group": "State Management",
             "pages": [
+              "ce/state-management/overview",
+              "ce/state-management/architecture",
+              "ce/state-management/rbac",
+              "ce/state-management/sso",
+              "ce/state-management/development",
+              "ce/state-management/analytics",
+              "ce/state-management/versioning"
+            ]
+          },
+          {
+            "group": "PR Automation",
+            "pages": [
+              "ce/features/overview",
               "ce/features/plan-preview",
               "ce/features/commentops",
               "ce/features/opa-policies",
@@ -90,27 +103,9 @@
             ]
           },
           {
-            "group": "State Management",
-            "pages": [
-              "ce/state-management/introduction",
-              "ce/state-management/quickstart",
-              "ce/state-management/architecture",
-              "ce/state-management/cloud-backend",
-              "ce/state-management/rbac",
-              "ce/state-management/sso",
-              "ce/state-management/digger-integration",
-              "ce/state-management/development",
-              "ce/state-management/analytics",
-              "ce/state-management/query-backend",
-              "ce/state-management/versioning",
-              "ce/state-management/gcp-quickstart",
-              "ce/state-management/aws-fargate-ad-quickstart"
-            ]
-          },
-          {
             "group": "Drift",
             "pages": [
-              "onboarding/set-up-in-ui",
+              "ce/drift/overview",
               "ce/drift/scoping-projects",
               "ce/drift/slack-notifications",
               "ce/drift/github-issues",
@@ -189,19 +184,19 @@
             ]
           },
           {
-            "group": "Local Development",
+            "group": "Development",
             "pages": [
-              "ce/local-development/overview",
-              "ce/local-development/backend",
-              "ce/local-development/statesman",
-              "ce/local-development/ui",
-              "ce/local-development/github-app"
-            ]
-          },
-          {
-            "group": "Contributing",
-            "pages": [
-              "ce/contributing/setup-dev-environment"
+              "ce/contributing/setup-dev-environment",
+              {
+                "group": "Local Development",
+                "pages": [
+                  "ce/local-development/overview",
+                  "ce/local-development/backend",
+                  "ce/local-development/statesman",
+                  "ce/local-development/ui",
+                  "ce/local-development/github-app"
+                ]
+              }
             ]
           },
           {

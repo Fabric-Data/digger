@@ -55,7 +55,7 @@ NEXT STEPS:
    kubectl logs -f deployment/taco-ui -n {{ .Release.Namespace }}
 
 3. Configure ingress (if not done):
-   helm upgrade {{ .Release.Name }} ./helm-charts/opentaco \
+   helm upgrade {{ .Release.Name }} ./self-hosting/kubernetes/helm-charts/opentaco \
      --set taco-ui.ui.ingress.enabled=true \
      --set taco-ui.ui.ingress.hosts[0].host=app.yourdomain.com
 

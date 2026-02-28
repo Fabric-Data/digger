@@ -82,7 +82,7 @@ taco-orchestrator:
       path: /
     
     # For detailed configuration (database, GitHub App, secrets, etc.),
-    # see helm-charts/taco-orchestrator/values.yaml or use existingSecret above
+    # see self-hosting/kubernetes/helm-charts/taco-orchestrator/values.yaml or use existingSecret above
 
 # ============================================================================
 # Taco Statesman Configuration
@@ -132,7 +132,7 @@ taco-statesman:
     #    cpu: 1000m
     
     # For detailed configuration (auth, JWT, postgres, OAuth, etc.),
-    # see helm-charts/taco-statesman/values.yaml or use existingSecret above
+    # see self-hosting/kubernetes/helm-charts/taco-statesman/values.yaml or use existingSecret above
 
 # ============================================================================
 # Token Service Configuration
@@ -189,7 +189,7 @@ taco-token-service:
       type: ClusterIP
       port: 8081
     
-    # For detailed configuration, see helm-charts/taco-token-service/values.yaml
+    # For detailed configuration, see self-hosting/kubernetes/helm-charts/taco-token-service/values.yaml
 
 # ============================================================================
 # Drift Detection Configuration
@@ -236,7 +236,7 @@ taco-drift:
       enabled: false
     
     # For detailed configuration (GitHub App, database, webhook secrets, etc.),
-    # see helm-charts/taco-drift/values.yaml or use existingSecret above
+    # see self-hosting/kubernetes/helm-charts/taco-drift/values.yaml or use existingSecret above
 
 # ============================================================================
 # Taco UI Configuration
@@ -294,7 +294,7 @@ taco-ui:
     #    cpu: 1000m
     
     # For detailed configuration (WorkOS, PostHog, webhook secrets, etc.),
-    # see helm-charts/taco-ui/values.yaml or use existingSecret above
+    # see self-hosting/kubernetes/helm-charts/taco-ui/values.yaml or use existingSecret above
 
 # ============================================================================
 # Additional Configuration
