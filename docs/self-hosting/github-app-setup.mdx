@@ -1,0 +1,59 @@
+---
+title: "GitHub App Setup"
+description: "Create and install a GitHub App for self-hosted OpenTaco using the backend setup wizard"
+---
+
+Use this guide to create the GitHub App required for PR Automation in self-hosted OpenTaco.
+
+This app is required regardless of where services run (Docker Compose, Kubernetes, Railway, or other deployments).
+
+<Steps>
+  <Step title="Open the backend GitHub setup wizard">
+    Open the UI-proxied setup endpoint:
+
+    - `https://<your-public-opentaco-url>/orchestrator/github/setup`
+
+    ![Backend GitHub app setup wizard](/images/contributing/local-dev--gh-app-setup.png)
+  </Step>
+
+  <Step title="Create the app from the generated manifest">
+    Opening the setup wizard generates the GitHub App manifest JSON payload.
+
+    Continue in GitHub from that generated manifest to create the app.
+
+    This is the main difference from cloud onboarding, where you install the hosted OpenTaco GitHub App directly.
+  </Step>
+
+  <Step title="Copy GitHub credentials into service configuration">
+    After app creation, copy these values into orchestrator and drift service env/secrets:
+
+    - `GITHUB_APP_ID`
+    - `GITHUB_APP_CLIENT_ID`
+    - `GITHUB_APP_CLIENT_SECRET`
+    - `GITHUB_APP_PRIVATE_KEY_BASE64`
+    - `GITHUB_WEBHOOK_SECRET`
+
+    Restart both orchestrator and drift services after updating these values so the new credentials are loaded.
+
+    ![GitHub app credentials after setup](/images/contributing/local-dev--gh-app-creds.png)
+  </Step>
+
+  <Step title="Install the app on your repositories">
+    Open the app install URL (for example `https://github.com/apps/<app-name>/installations/new`) and install to your org/user account.
+
+    Choose either all repositories or selected repositories based on your rollout plan.
+
+    Set `ORCHESTRATOR_GITHUB_APP_URL` in your UI service configuration to that same install link so "Connect with GitHub" points to your app.
+  </Step>
+</Steps>
+
+## Required backend environment variables
+
+- `PUBLIC_BASE_URL`: reachable public URL for orchestrator callback generation
+- `INTERNAL_BASE_URL`: internal orchestrator URL used for service-to-service routing
+- Optional: `GITHUB_ORG` to scope setup to a specific organization
+
+## Related docs
+
+- [Set up GitHub App](/onboarding/github-app-setup) for the full onboarding flow context
+- [Configuration](/self-hosting/configuration) for cross-service variable requirements

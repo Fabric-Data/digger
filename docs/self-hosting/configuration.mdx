@@ -38,9 +38,11 @@ For authentication-specific setup details, see [WorkOS Setup](/self-hosting/work
 
 ### GitHub
 
+For the self-hosted GitHub App flow, see [GitHub App Setup](/self-hosting/github-app-setup).
+
 | Variable(s) | Used by | Source system | When required | Notes |
 | --- | --- | --- | --- | --- |
-| `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY_BASE64`, `GITHUB_WEBHOOK_SECRET` | `orchestrator`, `drift` | GitHub App | During GitHub integration setup | Usually obtained from the in-app GitHub setup flow. Both services should use the same credentials and webhook secret. |
+| `GITHUB_APP_ID`, `GITHUB_APP_CLIENT_ID`, `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY_BASE64`, `GITHUB_WEBHOOK_SECRET` | `orchestrator`, `drift` | GitHub App | During GitHub integration setup | Usually obtained from the in-app GitHub setup flow. See [GitHub App Setup](/self-hosting/github-app-setup). Both services should use the same credentials and webhook secret. |
 | `GITHUB_ORG` | `orchestrator`, `drift` | GitHub org/user | During GitHub integration setup | Must match the org where the GitHub App is installed. |
 
 ### E2B (sandboxes)

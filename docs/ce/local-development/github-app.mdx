@@ -10,7 +10,7 @@ You must create and install this GitHub App in both setups: when Orchestrator/Dr
 
 Use the backend wizard as the primary path for local development.
 
-- Open `http://localhost:3000/github/setup` (or the backend public URL).
+- Open the UI-proxied setup endpoint: `https://<your-public-ui-domain>/orchestrator/github/setup` (or `http://localhost:3030/orchestrator/github/setup` when running UI locally).
 - The wizard generates a GitHub App manifest JSON payload for you.
 - Continue the GitHub setup flow from that manifest, then copy the app install URL into `ORCHESTRATOR_GITHUB_APP_URL` in `ui/.env.local`.
 
@@ -35,6 +35,8 @@ After app creation, GitHub shows credentials (including app ID and client ID). C
 - `GITHUB_APP_CLIENT_SECRET`
 - `GITHUB_APP_PRIVATE_KEY_BASE64`
 - `GITHUB_WEBHOOK_SECRET`
+
+Restart orchestrator and drift after updating these values so the new credentials are picked up.
 
 ![GitHub app credentials after local setup](/images/contributing/local-dev--gh-app-creds.png)
 

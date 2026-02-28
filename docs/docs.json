@@ -67,6 +67,7 @@
                 "pages": [
                   "self-hosting/configuration",
                   "self-hosting/workos-setup",
+                  "self-hosting/github-app-setup",
                   "self-hosting/e2b-setup"
                 ]
               },
@@ -80,6 +81,22 @@
                   "self-hosting/deprecated-individual-component-installs/statesman"
                 ]
               }
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "ce/contributing/setup-dev-environment",
+              "ce/local-development/overview",
+              {
+                "group": "Service Guides",
+                "pages": [
+                  "ce/local-development/ui",
+                  "ce/local-development/statesman",
+                  "ce/local-development/backend"
+                ]
+              },
+              "ce/local-development/github-app"
             ]
           },
           {
@@ -169,22 +186,6 @@
               "ce/reference/terraform.lock",
               "ce/reference/comment-args",
               "ce/reference/environment-variables"
-            ]
-          },
-          {
-            "group": "Development",
-            "pages": [
-              "ce/contributing/setup-dev-environment",
-              "ce/local-development/overview",
-              {
-                "group": "Service Guides",
-                "pages": [
-                  "ce/local-development/ui",
-                  "ce/local-development/statesman",
-                  "ce/local-development/backend"
-                ]
-              },
-              "ce/local-development/github-app"
             ]
           },
           {
