@@ -1,0 +1,19 @@
+---
+title: "Roles"
+---
+
+An OpenTaco role is a named collection of permissions used for RBAC within an organization. Roles define which actions a user can perform on which resources.
+
+When RBAC is initialized for an organization, OpenTaco creates default roles (`admin` and `default`) and assigns `admin` to the initializing user. Additional roles can be created as needed.
+
+## Use case for roles
+
+Roles help teams enforce least-privilege access while collaborating on shared infrastructure.
+
+- Give platform admins full control with the `admin` role.
+- Give most engineers read access plus scoped write access only to the units they manage.
+- Separate production access from development access by assigning different roles to different users.
+
+## Interacting with roles
+
+You can manage roles via the `taco rbac` CLI commands and RBAC API endpoints.

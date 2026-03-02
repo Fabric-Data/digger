@@ -1,0 +1,48 @@
+---
+title: "WorkOS Setup"
+description: "Configure WorkOS authentication for self-hosted OpenTaco"
+---
+
+WorkOS must be configured before users can sign in to a self-hosted OpenTaco deployment.
+
+## Setup flow
+
+<Steps>
+  <Step title="Sign in to WorkOS">
+    Go to [dashboard.workos.com](https://dashboard.workos.com) and sign up or sign in.
+
+    Create or select the project you will use for your OpenTaco environment.
+  </Step>
+
+  <Step title="Configure CORS, Redirects, and Webhooks">
+    In your WorkOS dashboard, configure these sections:
+      - Authentication > Sessions > Cross-Origin Resource Sharing (CORS)
+        - Set `https://<your-public-opentaco-url>` as an allowed origin
+      - Redirects:
+        - Set callback: `https://<your-public-opentaco-url>/api/auth/callback`
+        - Set sign-out redirect: `https://<your-public-opentaco-url>/logout`
+      - Webhooks:
+        - Create `user.created` webhook: `https://<your-public-opentaco-url>/api/auth/workos/webhooks`
+  </Step>
+
+  <Step title="Store WorkOS credentials">
+    Copy the required WorkOS values, store them in your secret manager, and use them in your `.env` / secrets files:
+
+    - `WORKOS_CLIENT_ID`
+    - `WORKOS_API_KEY`
+    - `WORKOS_COOKIE_PASSWORD`
+    - `WORKOS_WEBHOOK_SECRET`
+    - `WORKOS_REDIRECT_URI`
+
+    Do not commit these values to git.
+  </Step>
+
+  <Step title="Apply variables to the UI service">
+    Inject all WorkOS variables into the UI runtime environment for your deployment target.
+  </Step>
+
+  <Step title="Verify login flow">
+    Open your self-hosted OpenTaco URL and confirm you can reach and complete the login flow.
+    ![](/images/self-host/self-hosting--login-page.png)
+  </Step>
+</Steps>

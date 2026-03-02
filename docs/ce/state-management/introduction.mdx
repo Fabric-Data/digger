@@ -14,6 +14,7 @@ it does not come without challenges:
 
 We are introducing a state manager that is self-hostable and comes with RBAC built in to address these challenges.
 The advantages are controlling access to state, having a layer of validation and ease of access from any account.
+It implements an interface compatible with HCP Terraform, which makes migration and drop-in usage straightforward.
 The state manager solution seeks to solve all the issues mentioned above:
 
 | Drawbacks of Using S3 for Terraform State                     | Mitigations / Best Practices                                                                                                |
@@ -27,5 +28,4 @@ The state manager solution seeks to solve all the issues mentioned above:
 The state manager currently supports Amazon S3 as a backend with plans to support GCP buckets, Azure blob storage and more.
 
 Currently the state manager is self-hostable. There is no managed version of the state manager. Although it can be used in conjunction with digger
-
 

@@ -4,20 +4,20 @@
 
 ## Documentation
 
-- [Introduction](https://docs.opentaco.dev/readme/introduction): Overview of OpenTaco's core capabilities — state management, PR automation, remote runs, and drift detection.
-- [How It Works](https://docs.opentaco.dev/readme/howitworks): Architecture overview — five components: Statesman (state/remote runs), Drift, Token, Orchestrator (CI/PR automation), and UI (gateway proxy).
+- [Introduction](https://docs.opentaco.dev/introduction/introduction): Overview of OpenTaco's core capabilities — state management, PR automation, remote runs, and drift detection.
+- [System Architecture](https://docs.opentaco.dev/self-host-and-develop/system-architecture): Architecture overview of OpenTaco services, persistence components, and third-party dependencies.
 
 ## Getting Started
 
 - [Quick Start with Terraform](https://docs.opentaco.dev/ce/getting-started/with-terraform): Step-by-step guide to set up PR automation with GitHub Actions — create account at otaco.app, install GitHub App, configure cloud credentials, create digger.yml and workflow file.
 - [Quick Start with OpenTofu](https://docs.opentaco.dev/ce/getting-started/with-opentofu): Same flow using OpenTofu instead of Terraform.
 - [Quick Start with Terragrunt](https://docs.opentaco.dev/ce/getting-started/with-terragrunt): Same flow using Terragrunt.
-- [State Management Setup](https://docs.opentaco.dev/ce/getting-started/state-management): Connect local Terraform/OpenTofu to OpenTaco state backend — create a unit, configure cloud block, authenticate via `terraform login otaco.app`.
+- [State Management Setup](https://docs.opentaco.dev/onboarding/state-management): Connect local Terraform/OpenTofu to OpenTaco state backend — create a unit, configure cloud block, authenticate via `terraform login otaco.app`.
 
 ## Concepts
 
-- [Units](https://docs.opentaco.dev/ce/concepts/unit): A unit is the smallest deployable Terraform state plus its lock and history. Supports lifecycle management (create, ls, info, rm), state operations (pull, push), lock coordination, versioning, and restore.
-- [Roles](https://docs.opentaco.dev/ce/concepts/role): Role definitions for access control.
+- [Units](https://docs.opentaco.dev/introduction/concepts/unit): A unit is the smallest deployable Terraform state plus its lock and history. Supports lifecycle management (create, ls, info, rm), state operations (pull, push), lock coordination, versioning, and restore.
+- [Roles](https://docs.opentaco.dev/introduction/concepts/role): Role definitions for access control.
 
 ## State Management
 
@@ -45,14 +45,14 @@
 - [Layering](https://docs.opentaco.dev/ce/features/layering): Control execution order of dependent projects.
 - [OPA Policies](https://docs.opentaco.dev/ce/features/opa-policies): Policy-as-code with Open Policy Agent — plan policies (validate terraform plan output) and access policies (control who can run operations). Configure via management repo, orchestrator API, or inline Conftest.
 - [RBAC](https://docs.opentaco.dev/ce/features/rbac): Role-based access control at organisation, repository, and project levels. Integrates with OPA and CODEOWNERS.
-- [Remote Jobs](https://docs.opentaco.dev/ce/features/remote-jobs): Run terraform remotely via `dgctl exec` with streamed logs. Local directory is zipped and uploaded to CI. Respects OPA RBAC policies.
+- [Remote Jobs](https://docs.opentaco.dev/onboarding/remote-jobs): Run terraform remotely via `dgctl exec` with streamed logs. Local directory is zipped and uploaded to CI. Respects OPA RBAC policies.
 - [Private Runners](https://docs.opentaco.dev/ce/features/private-runners): Use private GitHub Actions runners.
 - [Multi-GitHub](https://docs.opentaco.dev/ce/features/multi-github): Support for multiple GitHub organizations.
 - [FIPS 140](https://docs.opentaco.dev/ce/features/fips-140): FIPS 140 compliance support.
 
 ## Drift Detection
 
-- [Set Up in UI](https://docs.opentaco.dev/ce/drift/set-up-in-ui): Configure drift detection schedules (hourly, daily, or custom crontab) via the UI.
+- [Set Up in UI](https://docs.opentaco.dev/onboarding/set-up-in-ui): Configure drift detection schedules (hourly, daily, or custom crontab) via the UI.
 - [Slack Notifications](https://docs.opentaco.dev/ce/drift/slack-notifications): Send drift alerts to Slack via webhooks.
 - [GitHub Issues](https://docs.opentaco.dev/ce/drift/github-issues): Create GitHub issues for detected drift.
 - [Remediation](https://docs.opentaco.dev/ce/drift/remediation): Remediate detected drift.
