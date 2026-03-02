@@ -1,0 +1,24 @@
+---
+title: "Overview"
+description: "Overview of OpenTaco PR automation capabilities"
+---
+
+This section focuses on how to use PR Automation day to day after setup is complete.
+
+If you are looking for the capability-level overview, see [Introduction: PR Automation](/introduction/pr-automation).
+
+## What you do here
+
+- Generate automated previews of proposed changes [Plan Preview](/ce/features/plan-preview)
+- Operate PR workflows from PR comments using [CommentOps](/ce/features/commentops)
+- Manage stack ordering with [Layering](/ce/features/layering)
+- Prevent unsafe concurrency with [PR-level locks](/ce/features/pr-level-locks)
+- Configure runner and compliance features such as [Private runners](/ce/features/private-runners) and [FIPS 140](/ce/features/fips-140)
+
+## Typical usage flow
+
+1. Open a PR that changes infrastructure code.
+2. Run plan commands through the configured PR workflow.
+3. Review plan output, AI summaries, and policy/check results.
+4. Apply when approval and branch requirements are satisfied.
+5. Iterate on locking, layering, and runner settings as repository scale grows.

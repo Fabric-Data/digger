@@ -463,6 +463,12 @@ make build-cli   # CLI only
 make build-prov  # Provider only
 ```
 
+### Install Binaries to PATH
+
+```bash
+make install
+```
+
 ### Running Tests
 
 ```bash
@@ -652,6 +658,5 @@ is a detailed list of these items:
 | internal/tfe/organizations.go     | `Entitlements`, `defaultEntitlements`, and `GetOranizationEntitlements` functions                                      |
 | internal/tfe/well_known.go        | Structs related to `DiscoverSpec` and the `GetWellKnownJson` function adapted for use with Opentaco                    |
 | internal/tfe_workspaces.go        | `ToTFE` and `GetWorkspace` adapted for use with current Opentaco endpoints                                             |
-
 
 

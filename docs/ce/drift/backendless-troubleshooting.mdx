@@ -1,0 +1,17 @@
+---
+title: "Backendless: Troubleshooting"
+description: "Troubleshoot backendless drift detection workflows in GitHub Actions"
+---
+
+## Common issues
+
+- 403 or permission errors when reporting results
+  - Ensure `no-backend: true` is set in backendless workflows.
+  - Confirm tokens used by the workflow have the required scopes.
+
+- Slack messages not received
+  - Verify the webhook URL passed in `drift-detection-slack-notification-url`.
+  - Check the GitHub Actions schedule and the latest workflow run logs.
+
+- Issue creation failures
+  - Confirm the token has permission to create issues in the repository.

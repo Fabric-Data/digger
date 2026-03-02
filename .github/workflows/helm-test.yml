@@ -3,7 +3,7 @@ name: Test Helm Charts
 on:
   pull_request:
     paths:
-      - 'helm-charts/**'
+      - 'self-hosting/kubernetes/helm-charts/**'
       - '.github/workflows/helm-test.yml'
 
 jobs:
@@ -35,18 +35,18 @@ jobs:
 
       - name: Build chart dependencies (if any)
         run: |
-          if grep -q "^dependencies:" helm-charts/${{ matrix.chart }}/Chart.yaml; then
-            helm dependency build helm-charts/${{ matrix.chart }}
+          if grep -q "^dependencies:" self-hosting/kubernetes/helm-charts/${{ matrix.chart }}/Chart.yaml; then
+            helm dependency build self-hosting/kubernetes/helm-charts/${{ matrix.chart }}
           fi
 
       - name: Lint chart
         run: |
-          helm lint helm-charts/${{ matrix.chart }}
+          helm lint self-hosting/kubernetes/helm-charts/${{ matrix.chart }}
 
       - name: Run unit tests (if present)
         run: |
-          if [ -d "helm-charts/${{ matrix.chart }}/tests" ]; then
-            helm unittest helm-charts/${{ matrix.chart }}
+          if [ -d "self-hosting/kubernetes/helm-charts/${{ matrix.chart }}/tests" ]; then
+            helm unittest self-hosting/kubernetes/helm-charts/${{ matrix.chart }}
           else
             echo "No helm-unittest tests found for ${{ matrix.chart }}, skipping"
           fi

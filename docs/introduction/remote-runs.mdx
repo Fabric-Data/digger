@@ -1,0 +1,41 @@
+---
+title: "Remote Runs (Beta)"
+description: "Run Terraform/OpenTofu remotely and stream logs back in a CLI-first workflow"
+---
+
+Remote Runs lets you execute Terraform/OpenTofu plan and apply operations in OpenTaco-managed remote environments instead of on your local machine.
+
+Your changes do not need to be pushed to the remote repo for this to work. OpenTaco zips your local directory and uploads it to the remote CI environment for execution.
+
+Because execution happens remotely with centralized controls, Remote Runs provide more consistent runtime behavior across your team. Logs are streamed back to your terminal so you keep a CLI-driven workflow while shifting execution off local laptops.
+
+This model is similar to HCP Terraform remote execution.
+
+## What you get
+
+- Remote execution environment for Terraform/OpenTofu
+- Streamed logs and run visibility
+- Tight integration with OpenTaco State Management
+
+## Typical workflow
+
+1. Create a remote unit in OpenTaco.
+2. Configure a `cloud` block that points to your OpenTaco org/unit.
+3. Authenticate with `terraform login` or `tofu login`.
+4. Run `plan`/`apply` locally and let execution happen remotely.
+
+## When teams adopt Remote Runs
+
+- You want consistent tooling/runtime behavior across contributors.
+- You want to reduce local credential/tooling drift on laptops.
+- You want Terraform Cloud-like remote execution while staying CLI-first.
+
+## Requirements
+
+- OpenTaco State Management configured
+- Remote unit configured for your target Terraform/OpenTofu version
+- Remote execution provider configured (for self-hosting, see E2B setup)
+
+## Start here
+
+- [Onboarding: Remote Runs](/onboarding/remote-jobs)

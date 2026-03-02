@@ -1,0 +1,16 @@
+---
+title: "Backendless: Remediation"
+description: "Remediate backendless drift findings through issue-driven apply or standard PR workflows"
+---
+
+If you use GitHub Issues integration in Backendless mode, you can remediate directly from the drift issue by commenting a Digger command.
+
+## Apply changes from the issue
+
+- Comment `digger apply` in the GitHub issue created for the drift event.
+- Digger runs the apply for the impacted project(s) and reports status back.
+
+## Notes
+
+- This issue-comment flow is specific to Backendless mode with GitHub Issues.
+- If you are not using Issues, remediate by opening a PR with fixes and using your normal PR flow.
