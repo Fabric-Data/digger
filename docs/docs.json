@@ -77,8 +77,8 @@
               {
                 "group": "Individual Component Installs",
                 "pages": [
-                  "self-hosting/deprecated-individual-component-installs/orchestrator-backend",
-                  "self-hosting/deprecated-individual-component-installs/statesman"
+                  "self-hosting/deprecated-individual-component-installs/statesman",
+                  "self-hosting/deprecated-individual-component-installs/orchestrator-backend"
                 ]
               }
             ]
@@ -102,17 +102,15 @@
           {
             "group": "State Management",
             "pages": [
-              "ce/state-management/architecture",
+              "ce/state-management/overview",
               "ce/state-management/rbac",
-              "ce/state-management/sso",
-              "ce/state-management/development",
-              "ce/state-management/analytics",
               "ce/state-management/versioning"
             ]
           },
           {
             "group": "PR Automation",
             "pages": [
+              "ce/features/overview",
               "ce/features/plan-preview",
               "ce/features/commentops",
               "ce/features/layering",
@@ -125,31 +123,26 @@
           {
             "group": "Drift",
             "pages": [
+              "ce/drift/overview",
               "ce/drift/scoping-projects",
               "ce/drift/slack-notifications",
-              "ce/drift/github-issues",
-              "ce/drift/remediation",
-              "ce/drift/troubleshooting"
+              "ce/drift/troubleshooting",
+              {
+                "group": "Backendless Mode",
+                "pages": [
+                  "ce/drift/backendless-github-actions",
+                  "ce/drift/backendless-scoping-projects",
+                  "ce/drift/backendless-slack-notifications",
+                  "ce/drift/github-issues",
+                  "ce/drift/backendless-remediation",
+                  "ce/drift/backendless-troubleshooting"
+                ]
+              }
             ]
           },
           {
             "group": "How To",
             "pages": [
-              {
-                "group": "Backendless PR Automation",
-                "pages": [
-                  "ce/howto/backendless-mode",
-                  "ce/howto/destroy-manual",
-                  "ce/cloud-providers/aws",
-                  "ce/cloud-providers/setting-up-separate-mgmt-account",
-                  "ce/cloud-providers/authenticating-with-oidc-on-aws",
-                  "ce/gcp/setting-up-gcp-+-gh-actions",
-                  "ce/gcp/federated-oidc-access",
-                  "ce/gcp/using-gcp-bucket-for-locks",
-                  "ce/azure-specific/azure",
-                  "ce/azure-specific/azure-devops-locking-connection-methods"
-                ]
-              },
               "ce/howto/noise-reduction",
               "ce/howto/specify-terraform-version",
               "ce/howto/caching-strategies",
@@ -167,13 +160,32 @@
               "ce/howto/multiacc-aws",
               "ce/howto/project-level-roles",
               "ce/howto/segregate-cloud-accounts",
-              "ce/howto/plan-artefacts",
+              "ce/howto/plan-artifacts",
               "ce/howto/using-checkov",
               "ce/howto/using-infracost",
               "ce/howto/using-opa-conftest",
               "ce/howto/using-terragrunt",
               "ce/howto/versioning",
-              "ce/howto/ignore-pull-request-events"
+              "ce/howto/destroy-manual",
+              {
+                "group": "Cloud Providers",
+                "pages": [
+                  "ce/cloud-providers/authenticating-with-oidc-on-aws",
+                  "ce/cloud-providers/setting-up-separate-mgmt-account",
+                  "ce/gcp/setting-up-gcp-+-gh-actions",
+                  "ce/gcp/federated-oidc-access",
+                  "ce/azure-specific/azure"
+                ]
+              },
+              {
+                "group": "Backendless PR Automation",
+                "pages": [
+                  "ce/howto/backendless-mode",
+                  "ce/cloud-providers/aws",
+                  "ce/gcp/using-gcp-bucket-for-locks",
+                  "ce/azure-specific/azure-devops-locking-connection-methods"
+                ]
+              }
             ]
           },
           {

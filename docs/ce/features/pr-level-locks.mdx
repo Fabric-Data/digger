@@ -2,9 +2,9 @@
 title: "PR-level locks"
 ---
 
-For every pull request we perform a lock when the pull request is opened and unlocked when the pull request is merged, this is to avoid making a single apply override another apply in a different PR.
-Since digger is primarily being used to apply while the PR is open this locking guarantees that no two PRs can wipe off eachother's changes due to human errors.
-When digger is using with a backend the locks are stored in the database directly in a table called digger_locks. No further configuration is needed.
+PR-level locking prevents concurrent infrastructure operations from different pull requests from overriding each other.
+
+When you run with the OpenTaco backend/orchestrator, PR locks are stored in the backend database (`digger_locks`) automatically. No additional lock storage setup is required.
 
 ## Disabling PR-level locks
 
@@ -18,10 +18,9 @@ projects:
      dir: dev/
 ```
 
-## Backendless mode
+## Backendless mode only
 
-When using digger in backendless mode there is no backend or DB to store the locks information. In this case we have implemented integrations with several
-cloud provider resources to store the state of PR locks. The table below summarises the different locking methods available when using backendless mode:
+When using backendless mode (`no-backend: true`), there is no backend DB for lock state. In that mode, configure cloud-provider lock storage:
 
 
 | Cloud Provider | Resource Type   | Configuration details Link |

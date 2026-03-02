@@ -3,6 +3,28 @@ title: "Overview"
 description: "Overview of OpenTaco drift detection and remediation"
 ---
 
-Drift detection continuously compares deployed infrastructure against your IaC definitions and reports unexpected changes.
+This section focuses on how to operate drift detection and remediation once drift is enabled.
 
-Use this section to configure drift scope, notifications, remediation workflows, and operational troubleshooting.
+If you are looking for the capability-level overview, see [Introduction: Drift Detection + Remediation](/introduction/drift-detection-remediation).
+
+## Two operating modes
+
+OpenTaco supports two distinct ways to run drift detection:
+
+1. **OpenTaco Drift Service mode**
+   - Configured in the OpenTaco UI
+   - You set schedule, notification configuration, and project scope in-app
+
+2. **Backendless GitHub Actions mode**
+   - Runs entirely in GitHub Actions on a schedule
+   - Does not interact with the OpenTaco application
+   - Reports drift results to Slack and/or GitHub Issues
+   - Workflow setup guide: [Backendless Drift via GitHub Actions](/ce/drift/backendless-github-actions)
+
+## Typical usage flow
+
+1. Choose your drift mode (OpenTaco Drift Service or Backendless).
+2. Define project scope and notification destinations for that mode.
+3. Run checks on your desired cadence.
+4. Review drift findings and prioritize by impact.
+5. Remediate through issue-driven apply or your normal PR/apply flow.
