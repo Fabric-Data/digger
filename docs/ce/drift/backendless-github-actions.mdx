@@ -1,0 +1,38 @@
+---
+title: "Backendless Drift via GitHub Actions"
+description: "Run drift detection on a schedule directly in GitHub Actions without using the OpenTaco app"
+---
+
+Use this mode when you want drift detection to run only in GitHub Actions with no OpenTaco application dependency.
+
+## Sample workflow
+
+```yml
+name: Drift Detection
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # daily at 00:00 UTC
+
+jobs:
+  detect-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: digger drift detection
+        uses: diggerhq/digger@vLatest
+        with:
+          mode: drift-detection
+          no-backend: true
+```
+
+## Common additions
+
+- Add project scoping with `digger-filename` (see [Backendless: Scope Drift to Specific Projects](/ce/drift/backendless-scoping-projects)).
+- Add GitHub Issue reporting with `INPUT_DRIFT_GITHUB_ISSUES: 'true'` (see [Backendless: GitHub Issues](/ce/drift/github-issues)).
+- Add required cloud/tool setup inputs for your environment (for example `setup-terraform` and cloud credentials).
+
+## Related
+
+- [Backendless: Slack Notifications](/ce/drift/backendless-slack-notifications)
+- [Backendless: Troubleshooting](/ce/drift/backendless-troubleshooting)

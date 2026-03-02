@@ -1,0 +1,74 @@
+╔════════════════════════════════════════════════════════════════╗
+║                   OpenTaco Deployment                          ║
+╚════════════════════════════════════════════════════════════════╝
+
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+DEPLOYMENT STATUS:
+==================
+
+✓ Database configuration is per service
+  Use each child chart's postgres/cloudSql settings (in-cluster or external).
+
+{{- if index .Values "taco-orchestrator" "enabled" }}
+✓ Taco Orchestrator: Enabled
+  Service: taco-orchestrator:3000
+{{- end }}
+
+{{- if index .Values "taco-statesman" "enabled" }}
+✓ Taco Statesman: Enabled
+  Service: taco-statesman:8080
+{{- end }}
+
+{{- if index .Values "taco-token-service" "enabled" }}
+✓ Token Service: Enabled
+  Service: taco-token-service:8081
+{{- end }}
+
+{{- if index .Values "taco-drift" "enabled" }}
+✓ Drift Detection: Enabled
+  Service: taco-drift:3004
+{{- end }}
+
+{{- if index .Values "taco-ui" "enabled" }}
+✓ Taco UI: Enabled
+  Service: taco-ui:3030
+{{- if index .Values "taco-ui" "ui" "ingress" "enabled" }}
+  URL: https://{{ (index (index .Values "taco-ui" "ui" "ingress" "hosts") 0).host }}
+{{- else }}
+  
+  To access the UI, run:
+    kubectl port-forward svc/taco-ui 3030:3030
+  Then visit: http://localhost:3030
+{{- end }}
+{{- end }}
+
+NEXT STEPS:
+===========
+
+1. Check deployment status:
+   kubectl get pods -n {{ .Release.Namespace }}
+
+2. View logs:
+   kubectl logs -f deployment/taco-ui -n {{ .Release.Namespace }}
+
+3. Configure ingress (if not done):
+   helm upgrade {{ .Release.Name }} ./self-hosting/kubernetes/helm-charts/opentaco \
+     --set taco-ui.ui.ingress.enabled=true \
+     --set taco-ui.ui.ingress.hosts[0].host=app.yourdomain.com
+
+4. Create required secrets if not exists:
+   kubectl create secret generic digger-db-secret --from-literal=password=YOUR_PASSWORD
+   kubectl create secret generic taco-db-secret --from-literal=password=YOUR_PASSWORD
+   kubectl create secret generic drift-db-secret --from-literal=password=YOUR_PASSWORD
+   kubectl create secret generic workos-secrets \
+     --from-literal=api-key=YOUR_API_KEY \
+     --from-literal=cookie-password=YOUR_COOKIE_PASSWORD
+
+For more information, see:
+  docs: https://docs.opentaco.dev
+  repo: https://github.com/diggerhq/digger
+
+Happy Infrastructure-as-Coding! 🚀

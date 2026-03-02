@@ -23,27 +23,19 @@
             "pages": [
               "introduction/introduction",
               {
+                "group": "Core Capabilities",
+                "pages": [
+                  "introduction/state-management",
+                  "introduction/remote-runs",
+                  "introduction/pr-automation",
+                  "introduction/drift-detection-remediation"
+                ]
+              },
+              {
                 "group": "Concepts",
                 "pages": [
                   "introduction/concepts/unit",
                   "introduction/concepts/role"
-                ]
-              }
-            ]
-          },
-          {
-            "group": "Onboarding",
-            "pages": [
-              "onboarding/account-setup",
-              "onboarding/state-management",
-              "onboarding/remote-jobs",
-              {
-                "group": "PR Automation",
-                "pages": [
-                  "onboarding/github-app-setup",
-                  "onboarding/configure-pr-automation-workflows",
-                  "onboarding/configuring-digger-yml",
-                  "onboarding/configuring-github-actions-workflow"
                 ]
               },
               "onboarding/set-up-in-ui"
@@ -84,33 +76,103 @@
             ]
           },
           {
+            "group": "Onboarding",
+            "pages": [
+              "onboarding/account-setup",
+              "onboarding/state-management",
+              "onboarding/remote-jobs",
+              {
+                "group": "PR Automation",
+                "pages": [
+                  "onboarding/github-app-setup",
+                  "onboarding/configure-pr-automation-workflows",
+                  "onboarding/configuring-digger-yml",
+                  "onboarding/configuring-github-actions-workflow"
+                ]
+              },
+              "onboarding/drift-detection-remediation"
+            ]
+          },
+          {
+            "group": "Self-hosting",
+            "pages": [
+              "self-host-and-develop/system-architecture",
+              {
+                "group": "Prerequisites",
+                "pages": [
+                  "self-hosting/configuration",
+                  "self-hosting/workos-setup",
+                  "self-hosting/github-app-setup",
+                  "self-hosting/e2b-setup"
+                ]
+              },
+              "self-hosting/docker-compose",
+              "self-hosting/railway",
+              "self-hosting/kubernetes",
+              {
+                "group": "Individual Component Installs",
+                "pages": [
+                  "self-hosting/deprecated-individual-component-installs/statesman",
+                  "self-hosting/deprecated-individual-component-installs/orchestrator-backend"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "ce/contributing/setup-dev-environment",
+              "ce/local-development/overview",
+              {
+                "group": "Service Guides",
+                "pages": [
+                  "ce/local-development/ui",
+                  "ce/local-development/statesman",
+                  "ce/local-development/backend"
+                ]
+              },
+              "ce/local-development/github-app"
+            ]
+          },
+          {
             "group": "State Management",
             "pages": [
-              "ce/state-management/introduction",
-              "ce/state-management/quickstart",
-              "ce/state-management/architecture",
-              "ce/state-management/cloud-backend",
+              "ce/state-management/overview",
               "ce/state-management/rbac",
-              "ce/state-management/sso",
-              "ce/state-management/digger-integration",
-              "ce/state-management/development",
-              "ce/state-management/analytics",
-              "ce/state-management/query-backend",
-              "ce/state-management/versioning",
-              "ce/state-management/gcp-quickstart",
-              "ce/state-management/aws-fargate-ad-quickstart"
+              "ce/state-management/versioning"
+            ]
+          },
+          {
+            "group": "PR Automation",
+            "pages": [
+              "ce/features/overview",
+              "ce/features/plan-preview",
+              "ce/features/commentops",
+              "ce/features/layering",
+              "ce/features/pr-level-locks",
+              "ce/features/private-runners",
+              "ce/features/fips-140",
+              "ce/features/ai-summaries"
             ]
           },
           {
             "group": "Drift",
             "pages": [
-              "onboarding/set-up-in-ui",
+              "ce/drift/overview",
               "ce/drift/scoping-projects",
               "ce/drift/slack-notifications",
-              "ce/drift/github-issues",
-              "ce/drift/remediation",
-              "ce/drift/self-host",
-              "ce/drift/troubleshooting"
+              "ce/drift/troubleshooting",
+              {
+                "group": "Backendless Mode",
+                "pages": [
+                  "ce/drift/backendless-github-actions",
+                  "ce/drift/backendless-scoping-projects",
+                  "ce/drift/backendless-slack-notifications",
+                  "ce/drift/github-issues",
+                  "ce/drift/backendless-remediation",
+                  "ce/drift/backendless-troubleshooting"
+                ]
+              }
             ]
           },
           {
@@ -122,10 +184,7 @@
               "ce/howto/apply-on-merge",
               "ce/howto/apply-requirements",
               "ce/howto/auto-merge",
-              "ce/howto/backendless-mode",
-              "ce/howto/commenting-strategies",
               "ce/howto/custom-commands",
-              "ce/howto/destroy-manual",
               "ce/howto/draft-prs",
               "ce/howto/codeowners",
               "ce/howto/disable-auto-checkout",
@@ -134,17 +193,34 @@
               "ce/howto/include-exclude-patterns",
               "ce/howto/masking-sensitive-values",
               "ce/howto/multiacc-aws",
-              "ce/howto/policy-overrides",
               "ce/howto/project-level-roles",
               "ce/howto/segregate-cloud-accounts",
-              "ce/howto/plan-artefacts",
-              "ce/howto/trigger-directly",
+              "ce/howto/plan-artifacts",
               "ce/howto/using-checkov",
               "ce/howto/using-infracost",
               "ce/howto/using-opa-conftest",
               "ce/howto/using-terragrunt",
               "ce/howto/versioning",
-              "ce/howto/ignore-pull-request-events"
+              "ce/howto/destroy-manual",
+              {
+                "group": "Cloud Providers",
+                "pages": [
+                  "ce/cloud-providers/authenticating-with-oidc-on-aws",
+                  "ce/cloud-providers/setting-up-separate-mgmt-account",
+                  "ce/gcp/setting-up-gcp-+-gh-actions",
+                  "ce/gcp/federated-oidc-access",
+                  "ce/azure-specific/azure"
+                ]
+              },
+              {
+                "group": "Backendless PR Automation",
+                "pages": [
+                  "ce/howto/backendless-mode",
+                  "ce/cloud-providers/aws",
+                  "ce/gcp/using-gcp-bucket-for-locks",
+                  "ce/azure-specific/azure-devops-locking-connection-methods"
+                ]
+              }
             ]
           },
           {
@@ -157,45 +233,6 @@
               "ce/reference/terraform.lock",
               "ce/reference/comment-args",
               "ce/reference/environment-variables"
-            ]
-          },
-          {
-            "group": "AWS-specific",
-            "pages": [
-              "ce/cloud-providers/aws",
-              "ce/cloud-providers/setting-up-separate-mgmt-account",
-              "ce/cloud-providers/authenticating-with-oidc-on-aws"
-            ]
-          },
-          {
-            "group": "GCP-specific",
-            "pages": [
-              "ce/gcp/setting-up-gcp-+-gh-actions",
-              "ce/gcp/federated-oidc-access",
-              "ce/gcp/using-gcp-bucket-for-locks"
-            ]
-          },
-          {
-            "group": "Azure-specific",
-            "pages": [
-              "ce/azure-specific/azure",
-              "ce/azure-specific/azure-devops-locking-connection-methods"
-            ]
-          },
-          {
-            "group": "Local Development",
-            "pages": [
-              "ce/local-development/overview",
-              "ce/local-development/backend",
-              "ce/local-development/statesman",
-              "ce/local-development/ui",
-              "ce/local-development/github-app"
-            ]
-          },
-          {
-            "group": "Contributing",
-            "pages": [
-              "ce/contributing/setup-dev-environment"
             ]
           },
           {

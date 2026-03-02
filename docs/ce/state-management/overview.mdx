@@ -1,0 +1,22 @@
+---
+title: "Overview"
+description: "Overview of OpenTaco state management"
+---
+
+This section focuses on how to use OpenTaco state management.
+
+If you are looking for the product-level capability overview, see [Introduction: State Management](/introduction/state-management).
+
+## What you do here
+
+- Configure and use access controls with [RBAC](/ce/state-management/rbac)
+- Manage state history with [Versioning](/ce/state-management/versioning)
+- Use units as your Terraform/OpenTofu state workspaces
+
+## Typical usage flow
+
+1. Create a unit for each root module/environment pair.
+2. Authenticate your CLI tooling against your OpenTaco endpoint.
+3. Point Terraform/OpenTofu at OpenTaco using the `cloud` workflow.
+4. Apply RBAC policies for team access.
+5. Use version history to inspect or restore previous state when needed.

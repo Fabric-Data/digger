@@ -52,7 +52,8 @@ services:
 
 ```
 GITHUB_ORG=your_github_org
-HOSTNAME=your_public_digger_hostname
+PUBLIC_BASE_URL=https://your_public_digger_hostname
+INTERNAL_BASE_URL=http://web:3000
 BEARER_AUTH_TOKEN=$(openssl rand -base64 12)
 DATABASE_URL=postgres://postgres:root@postgres:5432/postgres?sslmode=disable
 HTTP_BASIC_AUTH=1

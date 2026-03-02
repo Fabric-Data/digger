@@ -1,8 +1,26 @@
 ---
 title: Local development overview
+description: Docker Compose first, plus hybrid workflows for running selected services on your host.
 ---
 
-This section explains how to run the three core services locally:
+This section describes the recommended development workflow now that the full stack is available in `self-hosting/docker-compose`.
+
+## Recommended baseline
+
+Start with Docker Compose for everything, then move a single service to host runtime when you need faster iteration.
+
+```bash
+# from repo root
+make -C self-hosting/docker-compose all-up
+
+# or run from the compose directory
+# cd self-hosting/docker-compose
+# make all-up
+```
+
+Use ngrok on the UI port (`3030`) when testing WorkOS and GitHub callbacks.
+
+## Core services
 
 - **Backend** (`backend/`, port 3000 by default) – orchestrator + REST APIs for repos/orgs/jobs.
 - **Statesman** (`taco/cmd/statesman`, port 8080) – state storage API and Terraform Cloud-compatible endpoints.
@@ -21,13 +39,58 @@ This section explains how to run the three core services locally:
   - `STATESMAN_BACKEND_WEBHOOK_SECRET` ≡ `OPENTACO_ENABLE_INTERNAL_ENDPOINTS` (statesman) ≡ UI env.
 - Default ports: backend `3000`, statesman `8080`, UI `3030`.
 
-## High-level workflow
+## Hybrid mode: run one service outside Docker
 
-1) **Start backend** with internal + API endpoints enabled (so UI can call `/api/*` and `/github/*`).
-2) **Start statesman** with internal endpoints enabled; use memory storage for quick start.
-3) **Configure UI** `.env.local` with URLs + secrets + WorkOS creds; run `pnpm dev --host --port 3030`.
-4) **Sync org/user** into backend and statesman (WorkOS org id and user id/email) via the provided curl snippets in each page.
-5) (Optional) **GitHub App**: set `ORCHESTRATOR_GITHUB_APP_URL` to your install URL or `http://localhost:3000/github/setup` to create one via the backend. Use the UI domain for app callback/webhook URLs (see GitHub App settings page).
+<Steps>
+  <Step title="Start Compose baseline">
+    ```bash
+    # from repo root
+    make -C self-hosting/docker-compose all-up
+
+    # or from self-hosting/docker-compose
+    make all-up
+    ```
+  </Step>
+  <Step title="Stop the service you want to run locally">
+    ```bash
+    docker compose -f self-hosting/docker-compose/docker-compose.yml stop <service>
+    ```
+  </Step>
+  <Step title="Run that service from source">
+    - [UI local setup](/ce/local-development/ui)
+    - [Statesman local setup](/ce/local-development/statesman)
+    - [Orchestrator (backend) local setup](/ce/local-development/backend)
+  </Step>
+  <Step title="Update service URLs so callers can still reach it">
+    | Service running on host | If UI is in Docker | If UI is on host |
+    | --- | --- | --- |
+    | Backend (`:3000`) | In `ui` container config, set `ORCHESTRATOR_BACKEND_URL=http://host.docker.internal:3000` | In `ui/.env.local`, set `ORCHESTRATOR_BACKEND_URL=http://localhost:3000` |
+    | Statesman (`:8080`) | In `ui` container config, set `STATESMAN_BACKEND_URL=http://host.docker.internal:8080` | In `ui/.env.local`, set `STATESMAN_BACKEND_URL=http://localhost:8080` |
+    | Token service (`:8081`) | In `ui` container config, set `TOKENS_SERVICE_BACKEND_URL=http://host.docker.internal:8081` | In `ui/.env.local`, set `TOKENS_SERVICE_BACKEND_URL=http://localhost:8081` |
+    | Drift (`:3001`, optional) | In `ui` container config, set `DRIFT_REPORTING_BACKEND_URL=http://host.docker.internal:3001` | In `ui/.env.local`, set `DRIFT_REPORTING_BACKEND_URL=http://localhost:3001` |
+    | UI (`:3030`) | Not applicable | In `ui/.env.local`, keep backend/statesman URLs on `localhost` |
+
+    <Note>
+    On Linux, `host.docker.internal` may require host-gateway mapping. If unavailable, use your host IP reachable from containers.
+    </Note>
+
+    <Note>
+    Treat `self-hosting/docker-compose/docker-compose.yml` `ports:` mappings as the source of truth for host ports.
+    </Note>
+  </Step>
+</Steps>
+
+## What is superseded
+
+- Manually creating per-service local databases as the default first step.
+- Treating ngrok as backend-only; UI tunnel is now the primary callback endpoint.
+- Repeating full setup steps independently on each service page.
+
+## What remains important
+
+- Shared secret alignment across backend, statesman, and UI.
+- WorkOS organization/user sync into backend and statesman for authenticated UI flows.
+- GitHub App callback/webhook URLs pointing to the public UI domain.
 
 ## Troubleshooting cheatsheet
 

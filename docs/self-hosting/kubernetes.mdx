@@ -3,11 +3,144 @@ title: "Kubernetes"
 description: "Deploy OpenTaco on Kubernetes"
 ---
 
-This page will document Kubernetes deployment options and best practices.
+Use the OpenTaco Helm charts for Kubernetes deployments:
 
-## Coming soon
+- OpenTaco umbrella chart: `self-hosting/kubernetes/helm-charts/opentaco` (`ghcr.io/diggerhq/helm-charts/opentaco`)
+- Platform reference chart (optional): `self-hosting/kubernetes/helm-charts/opentaco-platform-reference` (`ghcr.io/diggerhq/helm-charts/opentaco-platform-reference`)
 
-- Helm-based deployment path
-- Configuration and secret management
-- Ingress and TLS setup
-- Upgrade and rollback strategy
+The umbrella chart deploys all OpenTaco services. The platform reference chart is optional and exists to bootstrap supporting platform resources.
+
+## Optional: Deploy the platform reference chart first
+
+Use this if you want a working reference for platform-level dependencies outside OpenTaco itself.
+
+Run these commands from `self-hosting/kubernetes/`.
+
+<Warning>
+  The platform reference chart is intended to get you up and running quickly. Treat it as a reference baseline, not a production-hardening blueprint.
+</Warning>
+
+<Steps>
+  <Step title="Create namespaces">
+    ```bash
+    kubectl create namespace opentaco
+    kubectl create namespace traefik
+    ```
+  </Step>
+  <Step title="Install the platform reference chart">
+    ```bash
+    helm upgrade --install opentaco-platform-reference \
+      oci://ghcr.io/diggerhq/helm-charts/opentaco-platform-reference \
+      --version 0.1.0 \
+      -n opentaco
+    ```
+  </Step>
+  <Step title="Validate platform reference resources are healthy">
+    ```bash
+    kubectl get pods -n opentaco
+    kubectl get pods -n traefik
+    kubectl rollout status deployment/cloudnative-pg -n opentaco --timeout=180s
+    kubectl rollout status statefulset/minio -n opentaco --timeout=300s
+    ```
+  </Step>
+  <Step title="Understand what this chart provides">
+    The reference chart can provision:
+
+    - Traefik ingress controller
+    - MinIO for object storage
+    - CloudNativePG operator
+    - A single CloudNativePG PostgreSQL cluster with three databases (orchestrator, statesman, and token-service)
+
+    You can use these defaults as an example, or provide your own ingress, databases and object storage instead.
+  </Step>
+</Steps>
+
+## Deploy OpenTaco with the umbrella chart
+
+<Steps>
+  <Step title="Prepare your values file">
+    Start from the chart defaults and configure your deployment-specific settings.
+
+    ```bash
+    cp helm-charts/opentaco/values-production.yaml.example values-opentaco.yaml
+    ```
+
+    If you deployed the platform reference chart, you can also start from:
+
+    ```bash
+    cp helm-charts/opentaco/helm.platform-reference.yaml values-opentaco.yaml
+    ```
+  </Step>
+  <Step title="Get ingress load balancer endpoint and create DNS">
+    Capture the external endpoint from your ingress or Gateway API implementation.
+
+    If you are using the platform reference chart (Traefik), you can check it with:
+
+    ```bash
+    kubectl get svc traefik -n traefik
+    ```
+
+    If you are using a different ingress controller or gateway, use that implementation's service or load balancer endpoint instead. 
+    
+    Then create a DNS record for your OpenTaco domain that points to the endpoint (for example, an `A` record for an IP or a `CNAME` record for a hostname), and use that domain in your OpenTaco public URL values.
+  </Step>
+  <Step title="Choose secret strategy: pre-created secrets or inline values">
+    <Note>
+      Recommended: pre-create Kubernetes secrets and reference them from chart values with `useExistingSecret: true`. Manage those secrets with your organization's preferred process (for example, External Secrets Operator).
+    </Note>
+
+    Example secret env files are provided in `helm-charts/secrets-example/` and can be used as the value reference for externally managed secrets.
+
+    For non-production testing, you can set values inline in the chart values instead of pre-creating secrets.
+  </Step>
+  <Step title="Configure required OpenTaco values">
+    Set the required credentials and shared variables described in [Configuration](./configuration) based on the strategy you selected:
+
+    - Existing secrets path: populate secret data and reference secret names in `values-opentaco.yaml`
+    - Inline path: set values directly in `values-opentaco.yaml`
+
+    At minimum, confirm public URL values, auth credentials, GitHub app values, internal shared secrets, and backend connection settings.
+  </Step>
+  <Step title="Create or sync Kubernetes secrets (existing-secret path)">
+    If you are using existing secrets, create or sync them now, then ensure `useExistingSecret: true` and `existingSecretName` entries in `values-opentaco.yaml` match.
+
+    ```bash
+    kubectl create secret generic ui-secrets \
+      --from-env-file=helm-charts/secrets-example/ui.env \
+      -n opentaco --dry-run=client -o yaml | kubectl apply -f -
+
+    kubectl create secret generic taco-orchestrator-secrets \
+      --from-env-file=helm-charts/secrets-example/digger-backend.env \
+      -n opentaco --dry-run=client -o yaml | kubectl apply -f -
+
+    kubectl create secret generic statesman-secrets \
+      --from-env-file=helm-charts/secrets-example/statesman.env \
+      -n opentaco --dry-run=client -o yaml | kubectl apply -f -
+
+    kubectl create secret generic drift-secrets \
+      --from-env-file=helm-charts/secrets-example/drift.env \
+      -n opentaco --dry-run=client -o yaml | kubectl apply -f -
+
+    kubectl create secret generic taco-sidecar-secrets \
+      --from-env-file=helm-charts/secrets-example/sidecar.env \
+      -n opentaco --dry-run=client -o yaml | kubectl apply -f -
+    ```
+  </Step>
+  <Step title="Install the OpenTaco umbrella chart">
+    ```bash
+    helm upgrade --install opentaco \
+      oci://ghcr.io/diggerhq/helm-charts/opentaco \
+      --version 0.1.0-public \
+      -f values-opentaco.yaml \
+      -n opentaco
+    ```
+  </Step>
+  <Step title="Verify services and access">
+    ```bash
+    kubectl get pods -n opentaco
+    kubectl get svc -n opentaco
+    ```
+
+    After pods are healthy, verify platform functionality such as storage via Units, remote runs (if enabled), and PR automation/drift workflows.
+  </Step>
+</Steps>
