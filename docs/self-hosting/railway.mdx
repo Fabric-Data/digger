@@ -3,11 +3,40 @@ title: "Railway"
 description: "Deploy and operate OpenTaco on Railway"
 ---
 
-This page will cover the recommended Railway deployment path.
+## Railway canvas
 
-## Coming soon
+![Railway canvas showing a self-hosted OpenTaco deployment with all services running](/images/self-host/self-hosting--railway-canvas.png)
 
-- Project and service setup
-- Environment variable configuration
-- Domain and networking setup
-- Operational checks and troubleshooting
+## Deploy with the Railway template
+
+<Steps>
+  <Step title="Start from the OpenTaco Railway template">
+    [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/FIg15a?referralCode=XA06uX&utm_medium=integration&utm_source=template&utm_campaign=generic)
+  </Step>
+  <Step title="Set pre-deploy variables">
+    During template setup, add your WorkOS values to the UI service (see [WorkOS Setup](./workos-setup)) and set `GITHUB_ORG` in the orchestrator service before the initial deploy.
+    Note: if you plan to use railway public URL known after creation, you can set placeholder values and then fill them in after creation
+  </Step>
+  <Step title="Provision the project and services">
+    Let Railway create the project and provision all services in the canvas.
+  </Step>
+  <Step title="Configure a public domain">
+    After provisioning, either generate a Railway public domain for the UI service or configure your own custom domain using Railway's CNAME flow.
+  </Step>
+  <Step title="Set remaining required environment variables">
+    Open each service in Railway and set the required environment variables using [Configuration](./configuration).
+  </Step>
+  <Step title="Redeploy and verify access">
+    Redeploy affected services after updating variables, then confirm the app is reachable through your configured domain.
+  </Step>
+  <Step title="Set up the GitHub App">
+    After access is verified, complete the [GitHub App setup flow](/onboarding/github-app-setup).
+  </Step>
+</Steps>
+
+Verify platform functionality such as:
+
+- Terraform/Opentaco backends via `units`
+- `remote runs` (if configured and enabled)
+- PR automation workflows
+- Drift detection and notifications
