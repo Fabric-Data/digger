@@ -1,0 +1,66 @@
+---
+title: "E2B Setup"
+description: "Create an E2B account and build/publish sandbox templates from the OpenTaco repo"
+---
+
+Use this guide if you want Remote Runs in a self-hosted OpenTaco deployment.
+
+<Steps>
+  <Step title="Create an E2B account">
+    Sign up or sign in at [e2b.dev](https://e2b.dev).
+  </Step>
+
+  <Step title="Create an E2B API key">
+    In your E2B dashboard, create an API key and store it in your secret manager.
+
+    You will use this as `E2B_API_KEY` in your sidecar environment.
+  </Step>
+
+  <Step title="Open the templates code in this repo">
+    From the repo root:
+
+    ```bash
+    cd sandbox-sidecar
+    npm install
+    ```
+  </Step>
+
+  <Step title="Authenticate template build commands">
+    Export your API key for the current shell:
+
+    ```bash
+    export E2B_API_KEY="<your-e2b-api-key>"
+    ```
+
+    Alternatively, place it in a local `.env` file in `sandbox-sidecar`.
+  </Step>
+
+  <Step title="Build and publish prebuilt templates">
+    Run:
+
+    ```bash
+    npx tsx templates/build-all.ts
+    ```
+
+    This builds and publishes templates defined in `sandbox-sidecar/templates/manifest.ts`.
+  </Step>
+
+  <Step title="Build and publish the barebones fallback template">
+    Run:
+
+    ```bash
+    npx tsx templates/build-barebones.ts
+    ```
+
+    Use alias `opentaco-barebones` as the fallback template ID (`E2B_BAREBONES_TEMPLATE_ID`) unless you intentionally choose a different alias.
+  </Step>
+
+  <Step title="Configure OpenTaco sidecar variables">
+    Set:
+
+    - `E2B_API_KEY`
+    - `E2B_BAREBONES_TEMPLATE_ID`
+
+    Then restart the sidecar service.
+  </Step>
+</Steps>

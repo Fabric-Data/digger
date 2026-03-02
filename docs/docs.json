@@ -66,16 +66,21 @@
             ]
           },
           {
-            "group": "Architecture & Self-hosting",
+            "group": "Self-hosting",
             "pages": [
-               "self-host-and-develop/howitworks",
-              "ce/self-host/auth-methods",
-              "ce/self-host/deploy-docker",
-              "ce/self-host/deploy-docker-compose",
-              "ce/self-host/deploy-binary",
-              "ce/self-host/deploy-helm",
-              "ce/self-host/self-host-on-azure",
-              "ce/self-host/self-host-on-railway"
+              "self-host-and-develop/system-architecture",
+              {
+                "group": "Prerequisites",
+                "pages": [
+                  "self-hosting/configuration",
+                  "self-hosting/workos-setup",
+                  "self-hosting/e2b-setup"
+                ]
+              },
+              "self-hosting/docker-compose",
+              "self-hosting/railway",
+              "self-hosting/kubernetes",
+              "self-hosting/deprecated-individual-component-installs"
             ]
           },
           {

@@ -1,0 +1,63 @@
+---
+title: "Docker Compose"
+description: "Run OpenTaco in a self-hosted environment with Docker Compose"
+---
+
+Use this page to start a self-hosted OpenTaco stack with the Docker Compose assets in `self-hosting/docker-compose`.
+
+## Prerequisites
+
+Before starting services, set the required environment variables described in [Configuration](./configuration).
+
+At minimum, copy the service env files used by compose and populate them with the necessary values:
+
+```bash
+cp self-hosting/docker-compose/orchestrator.env.example self-hosting/docker-compose/orchestrator.env
+cp self-hosting/docker-compose/drift.env.example self-hosting/docker-compose/drift.env
+cp self-hosting/docker-compose/sidecar.env.example self-hosting/docker-compose/sidecar.env
+cp self-hosting/docker-compose/ui.env.example self-hosting/docker-compose/ui.env
+```
+
+## Start the stack with Make targets
+
+From `self-hosting/docker-compose/`, use the Makefile targets:
+
+```bash
+# start only shared platform services (databases/object storage)
+make platform-up
+
+# start only OpenTaco application services
+# (only when providing external databases/object storage)
+make opentaco-up
+
+# start everything
+make all-up
+```
+
+## Common lifecycle targets
+
+<Note>
+  `PROFILE=all` is the Makefile default.
+</Note>
+
+```bash
+make ps
+
+# stream service logs
+make logs
+
+# restart services
+make restart
+
+# stop and remove services
+make down
+
+# rebuild images and start services
+make up-build
+
+# recreate services without rebuilding images
+make recreate
+
+# rebuild images and force recreate services
+make rebuild
+```

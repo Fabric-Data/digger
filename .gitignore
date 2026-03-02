@@ -45,8 +45,11 @@ taco/data/
 **/Chart.lock
 
 # Helm values with actual infrastructure config (team-specific)
-helm-charts/opentaco/values-production.yaml
-helm-charts/opentaco/values-test.yaml
+self-hosting/kubernetes/helm-charts/opentaco/values-production.yaml
+self-hosting/kubernetes/helm-charts/opentaco/values-test.yaml
+
+# Docker compose local self-hosting env files
+self-hosting/docker-compose/*.env
 
 # Atlas migration checksums (auto-generated)
 **/migrations/**/atlas.sum
