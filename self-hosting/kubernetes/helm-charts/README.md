@@ -6,7 +6,7 @@ Production-ready Kubernetes deployment for the OpenTaco infrastructure managemen
 
 ```bash
 # 1. Configure values file (see Configuration Checklist below)
-curl -O https://raw.githubusercontent.com/diggerhq/digger/develop/helm-charts/opentaco/values-test.yaml.example
+curl -O https://raw.githubusercontent.com/diggerhq/digger/develop/self-hosting/kubernetes/helm-charts/opentaco/values-test.yaml.example
 mv values-test.yaml.example values-test.yaml
 # Edit values-test.yaml with your GCP project ID and settings
 
@@ -359,7 +359,7 @@ gcloud sql instances describe INSTANCE_NAME --format="value(connectionName)"
 ## Chart Structure
 
 ```
-helm-charts/
+self-hosting/kubernetes/helm-charts/
 ├── opentaco/              # Umbrella chart
 │   ├── Chart.yaml
 │   ├── values.yaml        # Default values
@@ -388,4 +388,3 @@ helm-charts/
 | `values-test.yaml` | Minimal config for testing |
 | `values-production.yaml` | Production-ready settings |
 | `.secrets/*.env` | Environment-specific secrets (not committed) |
-

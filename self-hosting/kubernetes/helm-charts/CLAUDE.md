@@ -46,7 +46,7 @@ helm upgrade digger-backend ./digger-backend/
 - `backend-ingress.yaml` - Ingress configuration (enabled by default)
 
 ### CI/CD Workflows
-- **Pull Request Testing** (`.github/workflows/helm-test.yml`): Runs `helm unittest` and linting on PR changes to helm-charts/
+- **Pull Request Testing** (`.github/workflows/helm-test.yml`): Runs `helm unittest` and linting on PR changes to self-hosting/kubernetes/helm-charts/
 - **Release Process** (`.github/workflows/helm-release.yml`): On merge to **develop** branch (not main!), publishes to GitHub Container Registry at `oci://ghcr.io/diggerhq/helm-charts/digger-backend`
 - **Installation**: Users install directly from OCI registry, not GitHub Pages
 - **Important**: This repo uses `develop` as the default branch, not `main`
@@ -97,7 +97,7 @@ helm upgrade digger-backend ./digger-backend/
 
 ## Monorepo Integration Notes
 
-1. **Directory Structure**: Helm charts live in `/helm-charts/` subdirectory of main digger repo, with charts directly under it (not nested in `/charts/`)
+1. **Directory Structure**: Helm charts live in `/self-hosting/kubernetes/helm-charts/` subdirectory of main digger repo, with charts directly under it (not nested in `/charts/`)
 
 2. **Publishing Strategy**: 
    - Charts are developed in the main repo but published to GitHub Container Registry (OCI)
