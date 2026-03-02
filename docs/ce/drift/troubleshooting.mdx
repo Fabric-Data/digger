@@ -1,21 +1,19 @@
 ---
 title: "Troubleshooting"
+description: "Troubleshoot drift detection issues"
 ---
 
 ## Common issues
 
-- 403 or permission errors when reporting results
-  - Ensure `no-backend: true` is set in backendless workflows.
-  - Confirm tokens used by the workflow have the required scopes.
-
 - Slack messages not received
-  - Verify the webhook URL and that it’s configured in the correct place (action input or org settings).
-  - Check the configured schedule (Actions cron or org-level crontab).
+  - Verify the webhook URL in the Drift UI notification settings.
+  - Use the notification test action in the UI before saving.
 
-- Issue creation failures
-  - Confirm the token has permission to create issues in the repository.
+- Drift checks not running on expected cadence
+  - Confirm the saved schedule in the Drift UI.
+  - Check service logs around the expected schedule window.
 
-## Operator tips (self-hosting)
+## Operator tips (self-hosting Drift Service)
 
 - Check service logs around the scheduled run time.
 - Use the SQL helpers in `drift/scripts/cron/` to invoke internal endpoints on a predictable cadence.

@@ -1,10 +1,15 @@
 ---
-title: "Setting up DynamoDB Access for locks"
-description: "Digger runs without a backend but uses a DynamoDB table to keep track of all the locks that are necessary for locking PR projects. On the first run in your AWS account digger checks for the presence of `DiggerDynamoDBLockTable`. If the dynamoDB table with that name is not present it will automaticlaly create it.
-It requires the following policy for the DynamoDB access:"
+title: "AWS: Backendless DynamoDB lock storage"
+description: "Configure DynamoDB lock storage for PR locks when running Digger in backendless mode"
 ---
 
-```
+This setup is only required for backendless mode (`no-backend: true`).
+
+With the OpenTaco backend/orchestrator, PR locks are stored in the backend database automatically and this DynamoDB setup is not needed.
+
+In backendless mode, Digger checks for `DiggerDynamoDBLockTable` on first run and creates it if missing.
+
+```json
 {
     "Version": "2012-10-17",
     "Statement": [

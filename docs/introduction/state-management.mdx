@@ -1,0 +1,38 @@
+---
+title: "State Management"
+description: "Centralized state with access controls, version history, and an HCP Terraform-compatible interface"
+---
+
+OpenTaco State Management gives you centralized Terraform/OpenTofu state with access controls, version history, and rollback support.
+
+By default, many teams bring their own state backend (for example, S3) and only use PR automation. That works, but it introduces common issues:
+
+- Harder to secure access to state in team settings
+- Cross-account state access complexity
+- Repetitive Terraform backend configuration maintenance
+- Higher risk of misconfiguration without validation guardrails
+- No built-in version history and rollback workflow
+
+OpenTaco State Management is self-hostable and addresses these issues with RBAC, validation, and a Terraform-compatible interface.
+
+It is compatible with HCP Terraform-style workflows, so teams can use familiar `cloud` backend patterns and `terraform login`/`tofu login` flows for drop-in adoption.
+
+| Common challenge with bucket-only state | OpenTaco state management approach |
+| --- | --- |
+| Harder to secure bucket access across teams | Fine-grained RBAC and SSO integration options |
+| Cross-account access becomes hard to manage | Token-based access model for CI across accounts |
+| High backend config overhead in Terraform code | TFE-compatible `cloud` workflows for simpler integration |
+| Error-prone setup and weak validation patterns | Validation-oriented API workflows and centralized control |
+| No built-in version history or rollback | Native version history and rollback support |
+
+## What you get
+
+- Centralized state storage and access policy enforcement
+- Version history and rollback support
+- HCP Terraform-compatible interface for drop-in adoption
+
+OpenTaco State Management currently supports Amazon S3-compatible object storage as the state backend and is fully self-hostable.
+
+## Start here
+
+- [Onboarding: State Management](/onboarding/state-management)

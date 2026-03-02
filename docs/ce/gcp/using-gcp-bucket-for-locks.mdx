@@ -1,7 +1,11 @@
 ---
-title: "Using GCP bucket for locks"
+title: "GCP: Backendless bucket lock storage"
 ---
 
-You can configure Digger to use a GCP bucket for locks. To do that, set the following setting in the workflow file:
+This setup is only required for backendless mode (`no-backend: true`).
+
+With the OpenTaco backend/orchestrator, PR locks are stored in the backend database automatically and this bucket setup is not needed.
+
+In backendless mode, you can configure Digger to use a GCP bucket for PR locks. Set the following workflow input:
 
 - `google-lock-bucket` action input pointing to your bucket
