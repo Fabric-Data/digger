@@ -12,12 +12,18 @@ digger:
   replicaCount: 1
 
   # Image configuration
-  # Note: Full registry path comes from global.imageRegistry
-  # Public image: ghcr.io/diggerhq/digger/digger-backend-ee
+  # Repository path is combined with digger.image.registry/global.imageRegistry.
+  # Example rendered image: ghcr.io/diggerhq/digger_backend:latest
   image:
-    repository: digger-backend-ee
+    # Optional per-chart registry override. Falls back to global.imageRegistry.
+    registry: ""
+    repository: digger_backend
     tag: "latest"
     pullPolicy: IfNotPresent
+
+  # Pod annotations for orchestrator pods.
+  # These override matching keys from global.podAnnotations.
+  podAnnotations: {}
 
   # RBAC configuration for Job spawning
   # The orchestrator needs permissions to create and manage Kubernetes Jobs
@@ -177,3 +183,4 @@ digger:
 # Global configuration (optional)
 global:
   imagePullSecrets: []
+  podAnnotations: {}

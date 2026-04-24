@@ -11,6 +11,11 @@ spec:
       {{- include "taco-token-service.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- $podAnnotations := mergeOverwrite (dict) (default (dict) .Values.global.podAnnotations) (default (dict) .Values.tokenService.podAnnotations) }}
+      {{- if $podAnnotations }}
+      annotations:
+        {{- toYaml $podAnnotations | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "taco-token-service.selectorLabels" . | nindent 8 }}
     spec:
@@ -19,7 +24,7 @@ spec:
       {{- end }}
       containers:
         - name: token-service
-          image: "{{ .Values.global.imageRegistry | default "ghcr.io/diggerhq/digger" }}/{{ .Values.tokenService.image.repository }}:{{ .Values.tokenService.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.tokenService.image.registry | default .Values.global.imageRegistry | default "ghcr.io/diggerhq" }}/{{ .Values.tokenService.image.repository }}:{{ .Values.tokenService.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.tokenService.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - name: http

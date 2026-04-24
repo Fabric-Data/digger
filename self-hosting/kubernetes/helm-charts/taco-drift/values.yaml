@@ -12,12 +12,18 @@ drift:
   # Note: Full registry path comes from global.imageRegistry
   # Public image: ghcr.io/diggerhq/digger/drift
   image:
-    repository: drift
+    # Optional per-chart registry override. Falls back to global.imageRegistry.
+    registry: ""
+    repository: digger/drift
     tag: "latest"
     pullPolicy: "IfNotPresent"
 
   # Number of replicas
   replicaCount: 1
+
+  # Pod annotations for drift pods.
+  # These override matching keys from global.podAnnotations.
+  podAnnotations: {}
 
   # Custom environment variables
   customEnv: []
@@ -107,3 +113,4 @@ drift:
 # Global configuration (optional)
 global:
   imagePullSecrets: []
+  podAnnotations: {}

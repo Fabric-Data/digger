@@ -11,12 +11,17 @@ spec:
       {{- include "taco-sidecar.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- $podAnnotations := mergeOverwrite (dict) (default (dict) .Values.global.podAnnotations) (default (dict) .Values.sidecar.podAnnotations) }}
+      {{- if $podAnnotations }}
+      annotations:
+        {{- toYaml $podAnnotations | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "taco-sidecar.selectorLabels" . | nindent 8 }}
     spec:
       containers:
       - name: sidecar
-        image: "{{ .Values.sidecar.image.repository }}:{{ .Values.sidecar.image.tag }}"
+        image: "{{ .Values.sidecar.image.registry | default .Values.global.imageRegistry | default "ghcr.io/diggerhq" }}/{{ .Values.sidecar.image.repository }}:{{ .Values.sidecar.image.tag }}"
         imagePullPolicy: {{ .Values.sidecar.image.pullPolicy }}
         ports:
         - name: http

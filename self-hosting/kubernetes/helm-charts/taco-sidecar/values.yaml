@@ -1,10 +1,16 @@
 sidecar:
   image:
-    repository: ghcr.io/diggerhq/sandbox-sidecar
+    # Optional per-chart registry override. Falls back to global.imageRegistry.
+    registry: ""
+    repository: sandbox-sidecar
     tag: "latest"
     pullPolicy: IfNotPresent
 
   replicaCount: 1
+
+  # Pod annotations for sidecar pods.
+  # These override matching keys from global.podAnnotations.
+  podAnnotations: {}
 
   service:
     type: ClusterIP
@@ -51,3 +57,7 @@ sidecar:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+global:
+  imageRegistry: ""
+  podAnnotations: {}
