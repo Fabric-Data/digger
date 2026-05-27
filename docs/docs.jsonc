@@ -1,0 +1,276 @@
+{
+  "$schema": "https://holocron.so/docs.json",
+  "theme": "mint",
+  "name": "Digger",
+  "banner": {
+    "content": "🚀 We have rebranded to opentaco [see here](https://opentaco.dev) for details.",
+    "dismissible": true
+  },
+  "colors": {
+    "primary": "#131311",
+    "light": "#dfdfdf",
+    "dark": "#131311"
+  },
+  "background": {
+    "color": {
+      "light": "#f8f6f1",
+      "dark": "#0f0f0f"
+    }
+  },
+  "fonts": {
+    "heading": {
+      "family": "Newsreader",
+      "weight": 400
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
+  },
+  "favicon": "/favicon.png",
+  "redirects": [
+    {
+      "source": "/readme/introduction",
+      "destination": "/introduction/introduction"
+    }
+  ],
+  "navigation": {
+    "groups": [
+      {
+        "group": "Introduction",
+        "pages": [
+          "introduction/introduction",
+          {
+            "group": "Core Capabilities",
+            "pages": [
+              "introduction/state-management",
+              "introduction/remote-runs",
+              "introduction/pr-automation",
+              "introduction/drift-detection-remediation"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "introduction/concepts/unit",
+              "introduction/concepts/role"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Onboarding",
+        "pages": [
+          "onboarding/account-setup",
+          "onboarding/state-management",
+          "onboarding/remote-jobs",
+          {
+            "group": "PR Automation",
+            "pages": [
+              "onboarding/github-app-setup",
+              "onboarding/configure-pr-automation-workflows",
+              "onboarding/configuring-digger-yml",
+              "onboarding/configuring-github-actions-workflow"
+            ]
+          },
+          "onboarding/drift-detection-remediation"
+        ]
+      },
+      {
+        "group": "Self-hosting",
+        "pages": [
+          "self-host-and-develop/system-architecture",
+          {
+            "group": "Prerequisites",
+            "pages": [
+              "self-hosting/configuration",
+              "self-hosting/workos-setup",
+              "self-hosting/github-app-setup",
+              "self-hosting/e2b-setup"
+            ]
+          },
+          "self-hosting/docker-compose",
+          "self-hosting/railway",
+          "self-hosting/kubernetes",
+          {
+            "group": "Individual Component Installs",
+            "pages": [
+              "self-hosting/deprecated-individual-component-installs/statesman",
+              "self-hosting/deprecated-individual-component-installs/orchestrator-backend"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Features",
+        "pages": [
+          "ce/features/plan-preview",
+          "ce/features/commentops",
+          "ce/features/layering",
+          "ce/features/pr-level-locks",
+          "ce/features/private-runners",
+          "ce/features/fips-140",
+          "ce/features/ai-summaries"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "ce/contributing/setup-dev-environment",
+          "ce/local-development/overview",
+          {
+            "group": "Service Guides",
+            "pages": [
+              "ce/local-development/ui",
+              "ce/local-development/statesman",
+              "ce/local-development/backend"
+            ]
+          },
+          "ce/local-development/github-app"
+        ]
+      },
+      {
+        "group": "State Management",
+        "pages": [
+          "ce/state-management/overview",
+          "ce/state-management/rbac",
+          "ce/state-management/versioning"
+        ]
+      },
+      {
+        "group": "Security",
+        "pages": [
+          "ce/security/overview"
+        ]
+      },
+      {
+        "group": "PR Automation",
+        "pages": [
+          "ce/features/overview",
+          "ce/features/plan-preview",
+          "ce/features/commentops",
+          "ce/features/layering",
+          "ce/features/pr-level-locks",
+          "ce/features/private-runners",
+          "ce/features/fips-140",
+          "ce/features/ai-summaries"
+        ]
+      },
+      {
+        "group": "Drift",
+        "pages": [
+          "ce/drift/overview",
+          "ce/drift/scoping-projects",
+          "ce/drift/slack-notifications",
+          "ce/drift/troubleshooting",
+          {
+            "group": "Backendless Mode",
+            "pages": [
+              "ce/drift/backendless-github-actions",
+              "ce/drift/backendless-scoping-projects",
+              "ce/drift/backendless-slack-notifications",
+              "ce/drift/github-issues",
+              "ce/drift/backendless-remediation",
+              "ce/drift/backendless-troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "How To",
+        "pages": [
+          "ce/howto/noise-reduction",
+          "ce/howto/specify-terraform-version",
+          "ce/howto/caching-strategies",
+          "ce/howto/apply-on-merge",
+          "ce/howto/apply-requirements",
+          "ce/howto/auto-merge",
+          "ce/howto/custom-commands",
+          "ce/howto/draft-prs",
+          "ce/howto/codeowners",
+          "ce/howto/disable-auto-checkout",
+          "ce/howto/disable-telemetry",
+          "ce/howto/generate-projects",
+          "ce/howto/include-exclude-patterns",
+          "ce/howto/masking-sensitive-values",
+          "ce/howto/multiacc-aws",
+          "ce/howto/project-level-roles",
+          "ce/howto/segregate-cloud-accounts",
+          "ce/howto/plan-artifacts",
+          "ce/howto/using-checkov",
+          "ce/howto/using-infracost",
+          "ce/howto/using-opa-conftest",
+          "ce/howto/using-terragrunt",
+          "ce/howto/versioning",
+          "ce/howto/destroy-manual",
+          {
+            "group": "Cloud Providers",
+            "pages": [
+              "ce/cloud-providers/authenticating-with-oidc-on-aws",
+              "ce/cloud-providers/setting-up-separate-mgmt-account",
+              "ce/gcp/setting-up-gcp-+-gh-actions",
+              "ce/gcp/federated-oidc-access",
+              "ce/azure-specific/azure"
+            ]
+          },
+          {
+            "group": "Backendless PR Automation",
+            "pages": [
+              "ce/howto/backendless-mode",
+              "ce/cloud-providers/aws",
+              "ce/gcp/using-gcp-bucket-for-locks",
+              "ce/azure-specific/azure-devops-locking-connection-methods"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "ce/reference/digger.yml",
+          "ce/reference/terragrunt-parsing",
+          "ce/reference/action-inputs",
+          "ce/reference/api",
+          "ce/reference/terraform.lock",
+          "ce/reference/comment-args",
+          "ce/reference/environment-variables"
+        ]
+      },
+      {
+        "group": "Troubleshooting",
+        "pages": [
+          "ce/troubleshooting/importing-existing-resources",
+          "ce/troubleshooting/action-errors",
+          "ce/troubleshooting/comments"
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png",
+    "href": "https://opentaco.dev"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/diggerhq/digger"
+    }
+  },
+  "footer": {
+    "socials": {
+      "slack": "https://diggertalk.slack.com/join/shared_invite/zt-1tocl4w0x-E3RkpPiK7zQkehl8O78g8Q#/shared-invite/email",
+      "linkedin": "https://www.linkedin.com/company/diggerhq/"
+    }
+  },
+  "appearance": {
+    "default": "light"
+  },
+  "decorativeLines": "none",
+  "layout": {
+    "maxWidth": 1260,
+    "sidebarWidth": 244,
+    "columnGap": 56,
+    "radius": 0
+  }
+}
