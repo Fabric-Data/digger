@@ -33,6 +33,8 @@ type DiggerConfig struct {
 	ReportTerraformOutputs        bool
 	DriftExcludePatterns          []string
 	DriftIncludePatterns          []string
+	DriftExcludeBlocks            []string
+	DriftIncludeBlocks            []string
 }
 
 type ReporterConfig struct {

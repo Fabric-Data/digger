@@ -21,6 +21,7 @@ import (
 	"github.com/diggerhq/digger/libs/spec"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 type TriggerDriftRunRequest struct {
@@ -81,6 +82,17 @@ func (mc MainController) TriggerDriftRunForProject(c *gin.Context) {
 		log.Printf("Could find project %v in digger yml", project.Name)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("could not find project %v in digger.yml", theProject)})
 		return
+	}
+
+	// Apply drift include/exclude block filters from generate_projects config
+	if theProject.BlockName != "" && (len(config.DriftIncludeBlocks) > 0 || len(config.DriftExcludeBlocks) > 0) {
+		includeOk := len(config.DriftIncludeBlocks) == 0 || lo.Contains(config.DriftIncludeBlocks, theProject.BlockName)
+		excluded := lo.Contains(config.DriftExcludeBlocks, theProject.BlockName)
+		if !includeOk || excluded {
+			log.Printf("Project %v block %v excluded by drift block filters, skipping", project.Name, theProject.BlockName)
+			c.String(http.StatusOK, "project excluded by drift block filters")
+			return
+		}
 	}
 
 	// Apply drift include/exclude patterns from generate_projects config

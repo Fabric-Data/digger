@@ -161,6 +161,8 @@ type GenerateProjectsConfigYaml struct {
 	AwsCognitoOidcConfig    *AwsCognitoOidcConfig       `yaml:"aws_cognito_oidc,omitempty"`
 	DriftExcludePatterns    []string                    `yaml:"drift_exclude_patterns,omitempty"`
 	DriftIncludePatterns    []string                    `yaml:"drift_include_patterns,omitempty"`
+	DriftExcludeBlocks      []string                    `yaml:"drift_exclude_blocks,omitempty"`
+	DriftIncludeBlocks      []string                    `yaml:"drift_include_blocks,omitempty"`
 }
 
 type TerragruntParsingConfig struct {
