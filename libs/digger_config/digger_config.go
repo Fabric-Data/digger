@@ -499,6 +499,7 @@ func HandleYamlProjectGeneration(config *DiggerConfigYaml, terraformDir string, 
 								"projectName", projectName)
 
 							project := ProjectYaml{
+								BlockName:            b.BlockName,
 								Name:                 projectName,
 								Dir:                  dir,
 								Workflow:             workflow,
