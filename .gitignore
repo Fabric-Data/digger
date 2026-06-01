@@ -22,6 +22,8 @@ go.work.sum
 dist/
 build/
 bin/
+node_modules/
+.wrangler/
 
 # Release-Please changelog files (ignored)
 .changelog-ignore/
