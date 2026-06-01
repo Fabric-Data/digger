@@ -2,6 +2,9 @@
   "$schema": "https://holocron.so/docs.json",
   "theme": "mint",
   "name": "Digger",
+  "assistant": {
+    "enabled": false
+  },
   "banner": {
     "content": "🚀 We have rebranded to opentaco [see here](https://opentaco.dev) for details.",
     "dismissible": true
