@@ -1,0 +1,104 @@
+# DRAFT for review — destined for Fabric-Data/digger:main as
+# .github/workflows/fabric-build-push.yml
+#
+# Trigger: tag the fork with vX.Y.Z-fabric.N  →  build Dockerfile_backend,
+# push to the CICD ECR repo, then open a PR in fabric-infrastructure bumping
+# local.backend_image to the new tag (review-only; a human merges to roll ECS).
+name: Fabric build, push & bump
+
+on:
+  push:
+    tags:
+      - "v*-fabric.*"
+
+concurrency:
+  group: fabric-build-push-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # OIDC into the CICD account
+  contents: read
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPOSITORY: digger-backend
+  CICD_ROLE: arn:aws:iam::590184123117:role/ServiceRoleForGitHubActionsDigger
+  TARGET_REPO: fabric-infrastructure
+  IMAGE_FILE: opentofu/projects/ci-cd/digger-backend/ecs.tf
+
+jobs:
+  build-push-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork at the tagged commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Configure AWS credentials (CICD account)
+        uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.CICD_ROLE }}
+
+      - name: Login to Amazon ECR
+        id: login
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+
+      - name: Build & push backend image
+        id: build
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"                       # e.g. v0.6.143-fabric.1
+          IMAGE="${{ steps.login.outputs.registry }}/${ECR_REPOSITORY}:${TAG}"
+          docker build \
+            --build-arg "COMMIT_SHA=$(git rev-parse --short HEAD)" \
+            -t "${IMAGE}" \
+            -f Dockerfile_backend .
+          docker push "${IMAGE}"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Mint cross-repo token (fabric-infrastructure)
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ vars.CI_GITHUB_APP_ID }}
+          private-key: ${{ secrets.CI_GITHUB_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ env.TARGET_REPO }}
+
+      - name: Open image-bump PR in fabric-infrastructure
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          IMAGE: ${{ steps.build.outputs.image }}
+          TAG: ${{ steps.build.outputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${TARGET_REPO}.git" target
+          cd target
+          # Replace the value of `backend_image = "..."` (matches both the
+          # original ghcr.io line and any prior ECR value).
+          sed -i -E "s|(^\s*backend_image\s*=\s*\").*(\"\s*$)|\1${IMAGE}\2|" "${IMAGE_FILE}"
+          if git diff --quiet; then
+            echo "ecs.tf already points at ${IMAGE} — nothing to do."
+            exit 0
+          fi
+          BRANCH="digger-bump/${TAG}"
+          git config user.name  "fabric-ci[bot]"
+          git config user.email "fabric-ci[bot]@users.noreply.github.com"
+          git checkout -b "${BRANCH}"
+          git commit -am "IT-1236: bump digger-backend image to ${TAG}"
+          git push --force-with-lease origin "${BRANCH}"
+          gh pr create \
+            --repo "${OWNER}/${TARGET_REPO}" \
+            --base main --head "${BRANCH}" \
+            --title "IT-1236: bump digger-backend image to ${TAG}" \
+            --body "Automated by the \`${GITHUB_REF_NAME}\` tag in [${OWNER}/digger](https://github.com/${OWNER}/digger/releases/tag/${TAG}).
+
+          Points \`local.backend_image\` at the freshly-pushed image:
+          \`\`\`
+          ${IMAGE}
+          \`\`\`
+          Merging rolls the Digger backend ECS service (Digger plan runs on this PR)." \
+            || echo "PR for ${BRANCH} already exists."
