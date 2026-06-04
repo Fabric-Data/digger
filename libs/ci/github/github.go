@@ -185,16 +185,103 @@ func (svc GithubService) UpdateIssue(ID int64, title string, body string) (int64
 	return *githubissue.ID, err
 }
 
+// GitHub rejects issue/PR comment bodies longer than 65,536 characters with a
+// 422. githubCommentChunkSize is the per-chunk budget we split at, leaving
+// generous headroom for the part header and any reopened code fence.
+const githubCommentChunkSize = 60000
+
 func (svc GithubService) PublishComment(prNumber int, comment string) (*ci.Comment, error) {
-	githubComment, _, err := svc.Client.Issues.CreateComment(context.Background(), svc.Owner, svc.RepoName, prNumber, &github.IssueComment{Body: &comment})
-	if err != nil {
-		return nil, fmt.Errorf("could not publish comment to PR %v, %v", prNumber, err)
+	chunks := splitCommentBody(comment, githubCommentChunkSize)
+
+	var first *ci.Comment
+	for i, chunk := range chunks {
+		body := chunk
+		if len(chunks) > 1 {
+			// Prepend a part header so reviewers can see output was split and
+			// in what order. Kept out of the single-comment path so normal
+			// comments are byte-identical to upstream.
+			body = fmt.Sprintf("> **🔀 Plan output — part %d of %d** (split to fit GitHub's comment size limit)\n\n%s", i+1, len(chunks), chunk)
+		}
+
+		githubComment, _, err := svc.Client.Issues.CreateComment(context.Background(), svc.Owner, svc.RepoName, prNumber, &github.IssueComment{Body: &body})
+		if err != nil {
+			return nil, fmt.Errorf("could not publish comment (part %d of %d) to PR %v, %v", i+1, len(chunks), prNumber, err)
+		}
+		if first == nil {
+			first = &ci.Comment{
+				Id:   strconv.FormatInt(*githubComment.ID, 10),
+				Body: githubComment.Body,
+				Url:  *githubComment.HTMLURL,
+			}
+		}
 	}
-	return &ci.Comment{
-		Id:   strconv.FormatInt(*githubComment.ID, 10),
-		Body: githubComment.Body,
-		Url:  *githubComment.HTMLURL,
-	}, err
+	return first, nil
+}
+
+// splitCommentBody splits comment into chunks no larger than maxChunkSize,
+// breaking on line boundaries. When a split lands inside a fenced code block
+// (```), the open fence is closed at the end of the chunk and reopened (with
+// the same info string) at the start of the next, so every chunk renders as
+// valid markdown on its own. Bodies at or under the limit are returned as-is
+// in a single-element slice.
+func splitCommentBody(comment string, maxChunkSize int) []string {
+	if len(comment) <= maxChunkSize {
+		return []string{comment}
+	}
+
+	var chunks []string
+	var b strings.Builder
+	inFence := false
+	fenceOpen := "" // the opening fence line, e.g. "```diff"
+
+	flush := func() {
+		if b.Len() == 0 {
+			return
+		}
+		s := b.String()
+		if inFence {
+			s += "\n```"
+		}
+		chunks = append(chunks, s)
+		b.Reset()
+		if inFence {
+			b.WriteString(fenceOpen)
+		}
+	}
+
+	for _, line := range strings.Split(comment, "\n") {
+		// A single line longer than the budget can't share a chunk; emit it in
+		// hard slices of its own. (Plan output lines are realistically short;
+		// this is a safety net.)
+		if len(line) > maxChunkSize {
+			flush()
+			for len(line) > maxChunkSize {
+				chunks = append(chunks, line[:maxChunkSize])
+				line = line[maxChunkSize:]
+			}
+		}
+
+		// +1 accounts for the newline that will join this line to the chunk.
+		if b.Len() > 0 && b.Len()+len(line)+1 > maxChunkSize {
+			flush()
+		}
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(line)
+
+		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+			if inFence {
+				inFence = false
+				fenceOpen = ""
+			} else {
+				inFence = true
+				fenceOpen = line
+			}
+		}
+	}
+	flush()
+	return chunks
 }
 
 func (svc GithubService) GetComments(prNumber int) ([]ci.Comment, error) {
