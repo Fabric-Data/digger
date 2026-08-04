@@ -1,0 +1,47 @@
+# IT-1236: publish the patched Digger CE CLI as a release asset.
+#
+# On every vX.Y.Z-fabric.N tag (same trigger as the backend's
+# fabric-build-push.yml), build the CE CLI and attach it to the tag's GitHub
+# Release as `digger-cli-Linux-X64` — the exact asset the `diggerhq/digger`
+# composite action downloads in "prebuilt" mode. Consuming repos then set
+# `uses: Fabric-Data/digger@vX.Y.Z-fabric.N` and get our patched CLI instead of
+# the upstream one (which 422s when plan output exceeds GitHub's 65,536-char
+# comment limit). The comment-chunking fix lives in libs/ci/github and is
+# compiled in via cli/go.mod's `replace github.com/diggerhq/digger/libs => ../libs`.
+#
+# Mirrors upstream .github/workflows/cli_release.yml (same asset name, build
+# flags, and go-release-action) but tag-triggered like our backend pipeline
+# rather than on a published GitHub Release.
+name: Fabric CLI release
+
+on:
+  push:
+    tags:
+      - "v*-fabric.*"
+
+permissions:
+  contents: write # create the release for the tag and upload the CLI asset
+
+jobs:
+  cli-linux-x64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository at the tagged commit
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Build & publish digger-cli-Linux-X64
+        uses: wangyoucao577/go-release-action@8fa1e8368c8465264d64e0198208e10f71474c87 # v1.50
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: linux
+          goarch: amd64
+          goversion: "1.25.6"
+          project_path: ./cli/cmd/digger
+          binary_name: digger
+          pre_command: export CGO_ENABLED=0
+          release_tag: ${{ github.ref_name }}
+          asset_name: "digger-cli-Linux-X64"
+          sha256sum: true
+          md5sum: false
+          compress_assets: "OFF"
+          overwrite: true

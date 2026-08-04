@@ -595,12 +595,12 @@ runs:
 
         if [[ ${{ inputs.ee }} == "true" ]]; then
           if [[ ${{ inputs.fips }} == "true" ]]; then
-            DOWNLOAD_URL="https://github.com/diggerhq/digger/releases/download/${DIGGER_VERSION}/digger-ee-cli-${DIGGER_OS}-${DIGGER_ARCH}-fips"
+            DOWNLOAD_URL="https://github.com/${{ github.action_repository }}/releases/download/${DIGGER_VERSION}/digger-ee-cli-${DIGGER_OS}-${DIGGER_ARCH}-fips"
           else
-            DOWNLOAD_URL="https://github.com/diggerhq/digger/releases/download/${DIGGER_VERSION}/digger-ee-cli-${DIGGER_OS}-${DIGGER_ARCH}"
+            DOWNLOAD_URL="https://github.com/${{ github.action_repository }}/releases/download/${DIGGER_VERSION}/digger-ee-cli-${DIGGER_OS}-${DIGGER_ARCH}"
           fi
         else
-          DOWNLOAD_URL="https://github.com/diggerhq/digger/releases/download/${DIGGER_VERSION}/digger-cli-${DIGGER_OS}-${DIGGER_ARCH}"
+          DOWNLOAD_URL="https://github.com/${{ github.action_repository }}/releases/download/${DIGGER_VERSION}/digger-cli-${DIGGER_OS}-${DIGGER_ARCH}"
         fi
 
         echo "Downloading from: $DOWNLOAD_URL"
@@ -614,7 +614,7 @@ runs:
           echo "3. Network connectivity issues"
           echo ""
           echo "Suggestions:"
-          echo "- Check if release ${DIGGER_VERSION} exists at: https://github.com/diggerhq/digger/releases"
+          echo "- Check if release ${DIGGER_VERSION} exists at: https://github.com/${{ github.action_repository }}/releases"
           echo "- Verify the architecture combination is supported"
           echo "- Try using a different release version"
           exit 1
