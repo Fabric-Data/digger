@@ -29,6 +29,18 @@ jobs:
       - name: Check out repository at the tagged commit
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
+      - name: Ensure a Release exists for this tag
+        # go-release-action uploads to an EXISTING release (it's designed for
+        # `release: released` triggers); on a tag push no Release object exists,
+        # so create one first. Idempotent — re-tag/re-run is a no-op.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+                 --title "$GITHUB_REF_NAME" \
+                 --notes "Fabric CLI build for $GITHUB_REF_NAME (IT-1236 comment-chunking patch)."
+
       - name: Build & publish digger-cli-Linux-X64
         uses: wangyoucao577/go-release-action@8fa1e8368c8465264d64e0198208e10f71474c87 # v1.50
         with:
