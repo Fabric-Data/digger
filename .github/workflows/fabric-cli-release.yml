@@ -17,7 +17,9 @@ name: Fabric CLI release
 on:
   push:
     tags:
-      - "v*-fabric.*"
+      # CLI-only namespace (see fabric-build-push.yml). Consumers pin this tag
+      # in digger_workflow.yml (uses: Fabric-Data/digger*-cli.N).
+      - "v*-cli.*"
 
 permissions:
   contents: write # create the release for the tag and upload the CLI asset
