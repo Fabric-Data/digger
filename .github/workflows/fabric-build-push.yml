@@ -9,7 +9,9 @@ name: Fabric build, push & bump
 on:
   push:
     tags:
-      - "v*-fabric.*"
+      # Backend-only namespace: a CLI or action change no longer rebuilds the
+      # backend / opens a bump PR. Full release = tag both v*-backend.N and v*-cli.N.
+      - "v*-backend.*"
 
 concurrency:
   group: fabric-build-push-${{ github.ref }}
